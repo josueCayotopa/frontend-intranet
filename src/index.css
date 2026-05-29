@@ -1,0 +1,16 @@
+@import "tailwindcss";
+@theme {
+  /* Colores principales de la Clínica */
+  --color-clinica-rojo: #B11A1A;
+  --color-clinica-rojo-light: #D63C3C;
+  --color-clinica-rojo-bg: #FDF2F2;
+  
+  --color-clinica-gris: #8B8889;
+  --color-clinica-gris-dark: #5C5A5B;
+  --color-clinica-gris-bg: #F7F7F7;
+}
+
+/* Opcional: Aquí puedes poner estilos globales de tu intranet si los necesitas */
+body {
+  @apply bg-gray-50 text-gray-900;
+}
