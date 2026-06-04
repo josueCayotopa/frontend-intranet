@@ -5,6 +5,7 @@ import Dashboard from '../pages/dashboard/Dashboard';
 import MiPerfil from '../pages/perfil/MiPerfil';
 import MisRemuneraciones from '../pages/remuneraciones/MisRemuneraciones';
 import MisVacaciones from '../pages/vacaciones/MisVacaciones';
+import GestionUsuarios from '../pages/admin/GestionUsuarios';
 import Layout from '../components/layout/Layout';
 
 export default function AppRouter() {
@@ -25,6 +26,7 @@ export default function AppRouter() {
           <Route path="perfil" element={<MiPerfil />} />
           <Route path="remuneraciones" element={<MisRemuneraciones />} />
           <Route path="vacaciones" element={<MisVacaciones />} />
+          <Route path="admin/usuarios" element={<GestionUsuarios />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

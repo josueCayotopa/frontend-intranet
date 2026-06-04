@@ -4,50 +4,47 @@ import { loginRequest } from '../api/auth';
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => localStorage.getItem('token'));
-  const [user, setUser] = useState(() => {
+  const [token,   setToken]   = useState(() => localStorage.getItem('token'));
+  const [user,    setUser]    = useState(() => {
     try { return JSON.parse(localStorage.getItem('user')); } catch { return null; }
   });
-  const [empresa, setEmpresa] = useState(() => localStorage.getItem('empresa'));
-  const [dbConnection, setDbConnection] = useState(() => localStorage.getItem('db_connection'));
+  const [empresa, setEmpresa] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('empresa')); } catch { return null; }
+  });
 
   const clearSession = useCallback(() => {
-    ['token', 'empresa', 'db_connection', 'user'].forEach((k) => localStorage.removeItem(k));
+    ['token', 'user', 'empresa'].forEach((k) => localStorage.removeItem(k));
     setToken(null);
     setUser(null);
     setEmpresa(null);
-    setDbConnection(null);
   }, []);
 
-  // Escucha el evento del interceptor de axios cuando hay un 401
   useEffect(() => {
     window.addEventListener('auth:expired', clearSession);
     return () => window.removeEventListener('auth:expired', clearSession);
   }, [clearSession]);
 
-  const login = useCallback(async (empresaVal, usuario, password) => {
-    const { data } = await loginRequest(empresaVal, usuario, password);
+  const login = useCallback(async (usuario, password) => {
+    const { data } = await loginRequest(usuario, password);
+    // data = { success, message, data: { token, usuario, empresa } }
+    const payload = data.data;
 
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('empresa', data.empresa);
-    localStorage.setItem('db_connection', data.db_connection);
-    localStorage.setItem('user', JSON.stringify(data.user));
+    localStorage.setItem('token',   payload.token);
+    localStorage.setItem('user',    JSON.stringify(payload.usuario));
+    localStorage.setItem('empresa', JSON.stringify(payload.empresa));
 
-    setToken(data.token);
-    setEmpresa(data.empresa);
-    setDbConnection(data.db_connection);
-    setUser(data.user);
+    setToken(payload.token);
+    setUser(payload.usuario);
+    setEmpresa(payload.empresa);
 
-    return data;
+    return payload;
   }, []);
 
-  const logout = useCallback(() => {
-    clearSession();
-  }, [clearSession]);
+  const logout = useCallback(() => clearSession(), [clearSession]);
 
   return (
     <AuthContext.Provider
-      value={{ token, user, empresa, dbConnection, login, logout, isAuthenticated: !!token }}
+      value={{ token, user, empresa, login, logout, isAuthenticated: !!token }}
     >
       {children}
     </AuthContext.Provider>

@@ -1,6 +1,5 @@
 import api from './axios';
 
-export const loginRequest = (empresa, nom_usuario, password) =>
-  api.post('/login', { empresa, nom_usuario, password });
-
-export const perfilRequest = () => api.get('/perfil');
+export const loginRequest  = (usuario, password) => api.post('/auth/login', { usuario, password });
+export const logoutRequest = ()                  => api.post('/auth/logout');
+export const meRequest     = ()                  => api.get('/auth/me');

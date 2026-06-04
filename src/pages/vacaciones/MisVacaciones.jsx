@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import api from '../../api/axios';
+import { getVacaciones, crearSolicitudVac, cancelarVac } from '../../api/erp';
 
 // ── Brand ──────────────────────────────────────────────────────────────────
 const ROJO = '#B11A1A';
@@ -143,7 +143,7 @@ function FormGozadas({ perfil, onClose, onSuccess }) {
     setEnviando(true);
     setError('');
     try {
-      await api.post('/vacaciones/gozadas', form);
+      await crearSolicitudVac({ tipo: 'VG', fec_inicio: form.fec_inicio, fec_final: form.fec_final });
       onSuccess('Solicitud de vacaciones enviada correctamente.');
       onClose();
     } catch (err) {
@@ -328,7 +328,7 @@ function FormCompra({ perfil, onClose, onSuccess }) {
     setEnviando(true);
     setError('');
     try {
-      await api.post('/vacaciones/compra', { ...form, num_dias: parseInt(form.num_dias) });
+      await crearSolicitudVac({ tipo: 'VC', fec_inicio: form.fec_inicio, fec_final: form.fec_final });
       onSuccess('Solicitud de compra de vacaciones enviada correctamente.');
       onClose();
     } catch (err) {
@@ -463,7 +463,7 @@ export default function MisVacaciones() {
 
   const cargar = () => {
     setLoading(true);
-    api.get('/vacaciones')
+    getVacaciones()
       .then(({ data }) => setVacData(data?.data ?? null))
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -480,7 +480,7 @@ export default function MisVacaciones() {
   const cancelarSolicitud = async (cod) => {
     if (!confirm('¿Cancelar esta solicitud?')) return;
     try {
-      await api.patch(`/vacaciones/${cod}/cancelar`);
+      await cancelarVac(cod);
       onSuccess('Solicitud cancelada correctamente.');
     } catch {
       setMensaje('No se pudo cancelar la solicitud.');

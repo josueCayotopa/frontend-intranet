@@ -47,6 +47,19 @@ const navItems = [
   },
 ];
 
+const adminItems = [
+  {
+    to: '/admin/usuarios',
+    label: 'Usuarios',
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+      </svg>
+    ),
+  },
+];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Contenido del sidebar (compartido entre desktop y drawer móvil)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -98,13 +111,43 @@ function SidebarContent({ onClose }) {
       {/* Empresa */}
       {empresa && (
         <div className="px-5 py-2 border-b border-gray-50">
-          <p className="text-xs truncate" style={{ color: GRIS }}>{empresa}</p>
+          <p className="text-xs truncate" style={{ color: GRIS }}>
+            {typeof empresa === 'string' ? empresa : empresa.nombre}
+          </p>
         </div>
       )}
 
       {/* Navegación */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navItems.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            onClick={onClose ?? undefined}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
+                isActive ? '' : 'hover:bg-gray-50 active:scale-95'
+              }`
+            }
+            style={({ isActive }) =>
+              isActive
+                ? { background: ROJO, color: '#fff' }
+                : { color: '#374151' }
+            }
+          >
+            {item.icon}
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+
+        {/* Separador Administración */}
+        <div className="pt-3 pb-1">
+          <p className="px-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: GRIS }}>
+            Administración
+          </p>
+        </div>
+
+        {adminItems.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

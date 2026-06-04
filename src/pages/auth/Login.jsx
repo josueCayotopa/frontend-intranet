@@ -5,24 +5,12 @@ import { useAuth } from '../../hooks/useAuth';
 const ROJO = '#B11A1A';
 const GRIS = '#8B8889';
 
-const EMPRESAS = [
-  'CLINICA LA LUZ SAC',
-  'CLINICA LA LUZ JAEN',
-  'CLINICA LA LUZ OFTALMOLOGIA - BREÑA',
-  'INSTITUTO OFTALMOLOGICO LA LUZ',
-  'CLINICA LA LUZ TACNA',
-  'INVERSIONES LOS CAPULLOS',
-  'SELUCE',
-  'ETEL MEDIC',
-  'EMPRESA_PRUEBAS',
-];
-
 export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ empresa: EMPRESAS[0], nom_usuario: '', password: '' });
-  const [error, setError] = useState('');
+  const [form, setForm]     = useState({ usuario: '', password: '' });
+  const [error, setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
   if (isAuthenticated) return <Navigate to="/dashboard" replace />;
@@ -34,18 +22,18 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.nom_usuario || !form.password) {
+    if (!form.usuario.trim() || !form.password) {
       setError('Por favor completa todos los campos.');
       return;
     }
     setLoading(true);
     try {
-      await login(form.empresa, form.nom_usuario, form.password);
+      await login(form.usuario.trim(), form.password);
       navigate('/dashboard', { replace: true });
     } catch (err) {
       const msg =
         err.response?.data?.message ||
-        err.response?.data?.errors?.nom_usuario?.[0] ||
+        err.response?.data?.errors?.usuario?.[0] ||
         'Credenciales incorrectas. Intenta nuevamente.';
       setError(msg);
     } finally {
@@ -53,14 +41,16 @@ export default function Login() {
     }
   };
 
+  const focusStyle = { boxShadow: `0 0 0 3px ${ROJO}30` };
+
   return (
     <div className="min-h-screen flex">
-      {/* Panel izquierdo — decorativo */}
+
+      {/* ── Panel izquierdo decorativo ── */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center p-12 relative overflow-hidden"
         style={{ background: ROJO }}
       >
-        {/* Círculos decorativos */}
         <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full opacity-10 bg-white" />
         <div className="absolute -bottom-32 -right-16 w-96 h-96 rounded-full opacity-10 bg-white" />
         <div className="absolute top-1/3 right-8 w-32 h-32 rounded-full opacity-10 bg-white" />
@@ -70,15 +60,8 @@ export default function Login() {
             src="/logo.png"
             alt="Clínica La Luz"
             className="h-24 object-contain mx-auto mb-8 drop-shadow-lg"
-            onError={(e) => {
-              e.target.style.display = 'none';
-              e.target.nextSibling.style.display = 'block';
-            }}
+            onError={(e) => { e.target.style.display = 'none'; }}
           />
-          <div className="hidden">
-            <p className="text-white text-sm font-semibold uppercase tracking-widest mb-1">Clínica</p>
-            <p className="text-white text-5xl font-black">La Luz</p>
-          </div>
           <h2 className="text-white text-3xl font-bold mb-3">Portal del Empleado</h2>
           <p className="text-white/70 text-base max-w-xs">
             Accede a tus boletas, vacaciones y toda la información de tu contrato en un solo lugar.
@@ -86,11 +69,11 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Panel derecho — formulario */}
+      {/* ── Panel derecho — formulario ── */}
       <div className="flex-1 flex items-center justify-center bg-gray-50 p-6">
         <div className="w-full max-w-sm">
 
-          {/* Logo móvil (solo en pantallas pequeñas) */}
+          {/* Logo móvil */}
           <div className="lg:hidden flex justify-center mb-8">
             <img
               src="/logo.png"
@@ -107,29 +90,8 @@ export default function Login() {
             </p>
           </div>
 
-          {/* Card */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-7">
             <form onSubmit={handleSubmit} className="space-y-5">
-
-              {/* Empresa */}
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wide mb-1.5" style={{ color: GRIS }}>
-                  Empresa
-                </label>
-                <select
-                  name="empresa"
-                  value={form.empresa}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 focus:outline-none transition"
-                  style={{ '--tw-ring-color': ROJO }}
-                  onFocus={(e) => e.target.style.boxShadow = `0 0 0 3px ${ROJO}30`}
-                  onBlur={(e) => e.target.style.boxShadow = 'none'}
-                >
-                  {EMPRESAS.map((emp) => (
-                    <option key={emp} value={emp}>{emp}</option>
-                  ))}
-                </select>
-              </div>
 
               {/* Usuario */}
               <div>
@@ -138,14 +100,14 @@ export default function Login() {
                 </label>
                 <input
                   type="text"
-                  name="nom_usuario"
-                  value={form.nom_usuario}
+                  name="usuario"
+                  value={form.usuario}
                   onChange={handleChange}
-                  placeholder="Ej: JGARCIA"
+                  placeholder="Ej: j.garcia"
                   autoComplete="username"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-300 focus:outline-none transition"
-                  onFocus={(e) => e.target.style.boxShadow = `0 0 0 3px ${ROJO}30`}
-                  onBlur={(e) => e.target.style.boxShadow = 'none'}
+                  onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                  onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
                 />
               </div>
 
@@ -162,8 +124,8 @@ export default function Login() {
                   placeholder="••••••••"
                   autoComplete="current-password"
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-800 placeholder-gray-300 focus:outline-none transition"
-                  onFocus={(e) => e.target.style.boxShadow = `0 0 0 3px ${ROJO}30`}
-                  onBlur={(e) => e.target.style.boxShadow = 'none'}
+                  onFocus={(e) => Object.assign(e.target.style, focusStyle)}
+                  onBlur={(e) => { e.target.style.boxShadow = 'none'; }}
                 />
               </div>
 
