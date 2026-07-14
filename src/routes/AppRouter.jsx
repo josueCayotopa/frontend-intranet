@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import PrivateRoute from './PrivateRoute';
+import AdminRoute from './AdminRoute';
 import Login from '../pages/auth/Login';
+import CambiarPassword from '../pages/auth/CambiarPassword';
 import Dashboard from '../pages/dashboard/Dashboard';
 import MiPerfil from '../pages/perfil/MiPerfil';
 import MisRemuneraciones from '../pages/remuneraciones/MisRemuneraciones';
@@ -13,6 +15,17 @@ export default function AppRouter() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+
+        {/* Ruta de cambio de contraseña: requiere login pero sin Layout */}
+        <Route
+          path="/cambiar-password"
+          element={
+            <PrivateRoute>
+              <CambiarPassword />
+            </PrivateRoute>
+          }
+        />
+
         <Route
           path="/"
           element={
@@ -26,8 +39,16 @@ export default function AppRouter() {
           <Route path="perfil" element={<MiPerfil />} />
           <Route path="remuneraciones" element={<MisRemuneraciones />} />
           <Route path="vacaciones" element={<MisVacaciones />} />
-          <Route path="admin/usuarios" element={<GestionUsuarios />} />
+          <Route
+            path="admin/usuarios"
+            element={
+              <AdminRoute>
+                <GestionUsuarios />
+              </AdminRoute>
+            }
+          />
         </Route>
+
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </BrowserRouter>

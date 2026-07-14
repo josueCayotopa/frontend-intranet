@@ -11,7 +11,6 @@ import {
 const ROJO = '#B11A1A';
 const GRIS = '#8B8889';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function cls(...args) {
   return args.filter(Boolean).join(' ');
 }
@@ -25,7 +24,7 @@ function Spinner() {
   );
 }
 
-// ── Badge estado ───────────────────────────────────────────────────────────
+// ── Badges ─────────────────────────────────────────────────────────────────
 function BadgeActivo({ activo }) {
   return (
     <span
@@ -36,6 +35,21 @@ function BadgeActivo({ activo }) {
     >
       <span className={cls('w-1.5 h-1.5 rounded-full', activo ? 'bg-emerald-500' : 'bg-gray-400')} />
       {activo ? 'Activo' : 'Inactivo'}
+    </span>
+  );
+}
+
+function BadgeRol({ rol }) {
+  const esAdmin = rol === 'ADMIN';
+  return (
+    <span
+      className={cls(
+        'inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold',
+        esAdmin ? 'text-white' : 'bg-gray-100 text-gray-600'
+      )}
+      style={esAdmin ? { background: ROJO } : {}}
+    >
+      {rol ?? 'EMPLEADO'}
     </span>
   );
 }
@@ -61,6 +75,38 @@ function Toast({ msg, type, onClose }) {
   );
 }
 
+// ── Paginación ─────────────────────────────────────────────────────────────
+function Paginacion({ pagina, ultimaPagina, total, onChange }) {
+  return (
+    <div className="px-5 py-3 border-t border-gray-50 flex items-center justify-between text-xs">
+      <span style={{ color: GRIS }}>
+        {total} {total === 1 ? 'usuario' : 'usuarios'}
+      </span>
+      {ultimaPagina > 1 && (
+        <div className="flex items-center gap-1">
+          <button
+            disabled={pagina <= 1}
+            onClick={() => onChange(pagina - 1)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+          >
+            ‹
+          </button>
+          <span className="px-2 font-medium text-gray-600">
+            {pagina} / {ultimaPagina}
+          </span>
+          <button
+            disabled={pagina >= ultimaPagina}
+            onClick={() => onChange(pagina + 1)}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+          >
+            ›
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Modal base ─────────────────────────────────────────────────────────────
 function Modal({ title, onClose, children, footer }) {
   return (
@@ -72,7 +118,6 @@ function Modal({ title, onClose, children, footer }) {
         className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
           <button
@@ -82,9 +127,7 @@ function Modal({ title, onClose, children, footer }) {
             ✕
           </button>
         </div>
-        {/* Body */}
         <div className="px-6 py-5 overflow-y-auto flex-1">{children}</div>
-        {/* Footer */}
         {footer && (
           <div className="px-6 pb-6 pt-2 border-t border-gray-100 shrink-0 flex gap-3 justify-end">
             {footer}
@@ -95,7 +138,7 @@ function Modal({ title, onClose, children, footer }) {
   );
 }
 
-// ── Campo de formulario ────────────────────────────────────────────────────
+// ── Campos de formulario ───────────────────────────────────────────────────
 function Field({ label, error, children }) {
   return (
     <div>
@@ -136,7 +179,83 @@ function Select({ error, children, ...props }) {
   );
 }
 
+// ── Combo selector de jefe ─────────────────────────────────────────────────
+// opciones: lista de usuarios de la misma empresa
+// value: cod_personal del jefe seleccionado (string vacío = sin jefe)
+// onChange: (cod_personal: string) => void
+function ComboJefe({ opciones, value, onChange, loading }) {
+  const [q, setQ]         = useState('');
+  const [open, setOpen]   = useState(false);
+
+  const seleccionado = opciones.find((u) => u.cod_personal === value);
+  const etiqueta = seleccionado
+    ? `${seleccionado.usuario}${seleccionado.nom_trabajador ? ' · ' + seleccionado.nom_trabajador : ''}`
+    : '';
+
+  const filtrados = q.trim()
+    ? opciones.filter(
+        (u) =>
+          u.usuario.toLowerCase().includes(q.toLowerCase()) ||
+          (u.nom_trabajador ?? '').toLowerCase().includes(q.toLowerCase()) ||
+          (u.dni ?? '').includes(q) ||
+          (u.cod_personal ?? '').includes(q)
+      )
+    : opciones;
+
+  return (
+    <div className="relative">
+      <input
+        type="text"
+        value={open ? q : etiqueta}
+        placeholder={loading ? 'Cargando usuarios…' : 'Buscar por usuario, nombre o DNI…'}
+        disabled={loading || opciones.length === 0}
+        className={cls(
+          'w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-colors',
+          'border-gray-200 focus:border-red-400 focus:ring-1 focus:ring-red-100',
+          (loading || opciones.length === 0) && 'bg-gray-50 cursor-not-allowed text-gray-400'
+        )}
+        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+        onFocus={() => { setQ(''); setOpen(true); }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+      />
+      {open && (
+        <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto text-sm">
+          <li
+            className="px-3 py-2 cursor-pointer hover:bg-gray-50 text-gray-400 italic border-b border-gray-100"
+            onMouseDown={() => { onChange(''); setOpen(false); setQ(''); }}
+          >
+            Sin jefe asignado
+          </li>
+          {filtrados.slice(0, 60).map((u) => (
+            <li
+              key={u.id}
+              className={cls(
+                'px-3 py-2 cursor-pointer hover:bg-red-50 flex items-center justify-between gap-2',
+                u.cod_personal === value && 'bg-red-50'
+              )}
+              onMouseDown={() => { onChange(u.cod_personal); setOpen(false); setQ(''); }}
+            >
+              <div className="min-w-0">
+                <span className="font-medium text-gray-800">{u.usuario}</span>
+                {u.nom_trabajador && (
+                  <span className="text-gray-500 ml-1.5 truncate">{u.nom_trabajador}</span>
+                )}
+              </div>
+              <span className="text-xs text-gray-400 shrink-0">{u.dni}</span>
+            </li>
+          ))}
+          {filtrados.length === 0 && (
+            <li className="px-3 py-2 text-gray-400 italic">Sin resultados</li>
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // ── Modal Crear / Editar usuario ───────────────────────────────────────────
+const ROLES = ['EMPLEADO', 'ADMIN'];
+
 const FORM_INIT = {
   empresa_id: '',
   cod_personal: '',
@@ -145,39 +264,55 @@ const FORM_INIT = {
   password: '',
   password_confirmation: '',
   foto_url: '',
+  rol: 'EMPLEADO',
   activo: true,
+  cod_personal_jefe: '',
 };
 
 function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
   const [form, setForm] = useState(
     modo === 'editar'
       ? {
-          empresa_id: usuario.empresa_id ?? '',
-          cod_personal: usuario.cod_personal ?? '',
-          dni: usuario.dni ?? '',
-          usuario: usuario.usuario ?? '',
-          password: '',
+          empresa_id:        usuario.empresa_id        ?? '',
+          cod_personal:      usuario.cod_personal      ?? '',
+          dni:               usuario.dni               ?? '',
+          usuario:           usuario.usuario           ?? '',
+          password:          '',
           password_confirmation: '',
-          foto_url: usuario.foto_url ?? '',
-          activo: usuario.activo ?? true,
+          foto_url:          usuario.foto_url          ?? '',
+          rol:               usuario.rol               ?? 'EMPLEADO',
+          activo:            usuario.activo            ?? true,
+          cod_personal_jefe: usuario.cod_personal_jefe ?? '',
         }
       : FORM_INIT
   );
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [errors,      setErrors]      = useState({});
+  const [loading,     setLoading]     = useState(false);
+  const [jefesOpc,    setJefesOpc]    = useState([]);
+  const [loadingJefe, setLoadingJefe] = useState(false);
+
+  // Cargar usuarios de la empresa seleccionada para el picker de jefe
+  useEffect(() => {
+    if (!form.empresa_id) { setJefesOpc([]); return; }
+    setLoadingJefe(true);
+    getUsuarios({ empresa_id: form.empresa_id, por_pagina: 200 })
+      .then(({ data }) => setJefesOpc(data.data?.items ?? []))
+      .catch(() => {})
+      .finally(() => setLoadingJefe(false));
+  }, [form.empresa_id]);
 
   const set = (key) => (e) =>
     setForm((p) => ({ ...p, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
 
   const validate = () => {
     const e = {};
-    if (!form.empresa_id)    e.empresa_id    = 'Selecciona una empresa.';
-    if (!form.cod_personal.trim()) e.cod_personal = 'Campo requerido.';
-    if (!form.dni.trim())         e.dni          = 'Campo requerido.';
-    if (!form.usuario.trim())     e.usuario      = 'Campo requerido.';
+    if (!form.empresa_id)              e.empresa_id    = 'Selecciona una empresa.';
+    if (!form.cod_personal.trim())     e.cod_personal  = 'Campo requerido.';
+    if (!form.dni.trim())              e.dni           = 'Campo requerido.';
+    if (!form.usuario.trim())          e.usuario       = 'Campo requerido.';
     if (modo === 'crear') {
-      if (!form.password)           e.password      = 'Campo requerido.';
-      else if (form.password.length < 6) e.password = 'Mínimo 6 caracteres.';
+      if (!form.password)              e.password      = 'Campo requerido.';
+      else if (form.password.length < 6) e.password   = 'Mínimo 6 caracteres.';
       if (form.password !== form.password_confirmation) e.password_confirmation = 'Las contraseñas no coinciden.';
     }
     return e;
@@ -191,7 +326,8 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
     try {
       const payload = { ...form };
       if (modo === 'editar') { delete payload.password; delete payload.password_confirmation; }
-      if (!payload.foto_url) delete payload.foto_url;
+      if (!payload.foto_url)          delete payload.foto_url;
+      if (!payload.cod_personal_jefe) delete payload.cod_personal_jefe;
 
       if (modo === 'crear') {
         await crearUsuario(payload);
@@ -210,6 +346,11 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
       setLoading(false);
     }
   };
+
+  // Opciones para jefe: excluir al propio usuario en modo editar
+  const opcionesJefe = modo === 'editar'
+    ? jefesOpc.filter((u) => u.id !== usuario.id)
+    : jefesOpc;
 
   return (
     <Modal
@@ -250,30 +391,98 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Cód. Personal" error={errors.cod_personal}>
-            <Input value={form.cod_personal} onChange={set('cod_personal')} placeholder="000101" error={errors.cod_personal} />
+            <Input
+              value={form.cod_personal}
+              onChange={set('cod_personal')}
+              placeholder="000101"
+              error={errors.cod_personal}
+            />
           </Field>
           <Field label="DNI" error={errors.dni}>
-            <Input value={form.dni} onChange={set('dni')} placeholder="12345678" error={errors.dni} />
+            <Input
+              value={form.dni}
+              onChange={set('dni')}
+              placeholder="12345678"
+              error={errors.dni}
+            />
           </Field>
         </div>
 
         <Field label="Usuario" error={errors.usuario}>
-          <Input value={form.usuario} onChange={set('usuario')} placeholder="j.apellido" autoComplete="off" error={errors.usuario} />
+          <Input
+            value={form.usuario}
+            onChange={set('usuario')}
+            placeholder="j.apellido"
+            autoComplete="off"
+            error={errors.usuario}
+          />
+        </Field>
+
+        <Field label="Rol">
+          <div className="flex gap-2">
+            {ROLES.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setForm((p) => ({ ...p, rol: r }))}
+                className="flex-1 py-2 rounded-xl text-sm font-semibold border transition-all"
+                style={
+                  form.rol === r
+                    ? { background: ROJO, color: '#fff', borderColor: ROJO }
+                    : { background: '#fff', color: '#6b7280', borderColor: '#e5e7eb' }
+                }
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </Field>
+
+        {/* Jefe directo — se selecciona desde los usuarios de la misma empresa */}
+        <Field label="Jefe directo (opcional)">
+          <ComboJefe
+            opciones={opcionesJefe}
+            value={form.cod_personal_jefe}
+            onChange={(val) => setForm((p) => ({ ...p, cod_personal_jefe: val }))}
+            loading={loadingJefe}
+          />
+          {form.cod_personal_jefe && (
+            <p className="text-xs mt-1" style={{ color: GRIS }}>
+              cod_personal guardado: <span className="font-mono">{form.cod_personal_jefe}</span>
+            </p>
+          )}
         </Field>
 
         {modo === 'crear' && (
           <>
             <Field label="Contraseña" error={errors.password}>
-              <Input type="password" value={form.password} onChange={set('password')} autoComplete="new-password" error={errors.password} />
+              <Input
+                type="password"
+                value={form.password}
+                onChange={set('password')}
+                autoComplete="new-password"
+                error={errors.password}
+              />
             </Field>
             <Field label="Confirmar contraseña" error={errors.password_confirmation}>
-              <Input type="password" value={form.password_confirmation} onChange={set('password_confirmation')} autoComplete="new-password" error={errors.password_confirmation} />
+              <Input
+                type="password"
+                value={form.password_confirmation}
+                onChange={set('password_confirmation')}
+                autoComplete="new-password"
+                error={errors.password_confirmation}
+              />
             </Field>
           </>
         )}
 
         <Field label="Foto URL (opcional)" error={errors.foto_url}>
-          <Input value={form.foto_url} onChange={set('foto_url')} placeholder="https://…" error={errors.foto_url} />
+          <Input
+            value={form.foto_url}
+            onChange={set('foto_url')}
+            placeholder="https://…"
+            error={errors.foto_url}
+          />
         </Field>
 
         <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -292,7 +501,7 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
 
 // ── Modal Cambiar contraseña ───────────────────────────────────────────────
 function ModalPassword({ usuario, onClose, onGuardado }) {
-  const [form, setForm] = useState({ password: '', password_confirmation: '' });
+  const [form, setForm]   = useState({ password: '', password_confirmation: '' });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -350,26 +559,80 @@ function ModalPassword({ usuario, onClose, onGuardado }) {
   );
 }
 
+// ── Botones de acción por fila ─────────────────────────────────────────────
+function AccionesRow({ u, onEditar, onPassword, onToggle }) {
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={onEditar}
+        title="Editar"
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      </button>
+      <button
+        onClick={onPassword}
+        title="Cambiar contraseña"
+        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+        </svg>
+      </button>
+      <button
+        onClick={onToggle}
+        title={u.activo ? 'Desactivar' : 'Activar'}
+        className={cls(
+          'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
+          u.activo
+            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+            : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
+        )}
+      >
+        {u.activo ? (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+          </svg>
+        ) : (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────────────
 export default function GestionUsuarios() {
-  const [usuarios, setUsuarios]   = useState([]);
-  const [empresas, setEmpresas]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [toast, setToast]         = useState(null);
+  const [usuarios, setUsuarios] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [toast, setToast]       = useState(null);
+
+  // Paginación
+  const [pagina, setPagina] = useState(1);
+  const [meta, setMeta]     = useState({ total: 0, ultima_pagina: 1, por_pagina: 15 });
 
   // Filtros
   const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const [filtroBuscar,  setFiltroBuscar]  = useState('');
   const [filtroActivo,  setFiltroActivo]  = useState('');
+  const [filtroRol,     setFiltroRol]     = useState('');
 
   // Modales
   const [modalCrear,    setModalCrear]    = useState(false);
-  const [modalEditar,   setModalEditar]   = useState(null);  // usuario seleccionado
-  const [modalPassword, setModalPassword] = useState(null);  // usuario seleccionado
+  const [modalEditar,   setModalEditar]   = useState(null);
+  const [modalPassword, setModalPassword] = useState(null);
 
   const showToast = (msg, type = 'ok') => setToast({ msg, type });
 
-  // Carga inicial de empresas (una sola vez)
   useEffect(() => {
     getEmpresas()
       .then(({ data }) => setEmpresas(data.data ?? []))
@@ -378,20 +641,30 @@ export default function GestionUsuarios() {
 
   const cargarUsuarios = useCallback(() => {
     setLoading(true);
-    const params = {};
-    if (filtroEmpresa) params.empresa_id = filtroEmpresa;
-    if (filtroBuscar)  params.buscar     = filtroBuscar;
-    if (filtroActivo !== '') params.activo = filtroActivo;
+    const params = { pagina };
+    if (filtroEmpresa)       params.empresa_id = filtroEmpresa;
+    if (filtroBuscar)        params.buscar     = filtroBuscar;
+    if (filtroActivo !== '') params.activo     = filtroActivo;
+    if (filtroRol)           params.rol        = filtroRol;
 
     getUsuarios(params)
-      .then(({ data }) => setUsuarios(data.data ?? []))
+      .then(({ data }) => {
+        setUsuarios(data.data?.items ?? []);
+        setMeta(data.data?.meta ?? { total: 0, ultima_pagina: 1, por_pagina: 15 });
+      })
       .catch(() => showToast('Error al cargar usuarios.', 'error'))
       .finally(() => setLoading(false));
-  }, [filtroEmpresa, filtroBuscar, filtroActivo]);
+  }, [filtroEmpresa, filtroBuscar, filtroActivo, filtroRol, pagina]);
 
   useEffect(() => {
     cargarUsuarios();
   }, [cargarUsuarios]);
+
+  // Helpers para cambiar filtros reseteando a página 1
+  const cambiarFiltroEmpresa = (v) => { setFiltroEmpresa(v); setPagina(1); };
+  const cambiarFiltroBuscar  = (v) => { setFiltroBuscar(v);  setPagina(1); };
+  const cambiarFiltroActivo  = (v) => { setFiltroActivo(v);  setPagina(1); };
+  const cambiarFiltroRol     = (v) => { setFiltroRol(v);     setPagina(1); };
 
   const handleToggle = async (u) => {
     try {
@@ -435,10 +708,9 @@ export default function GestionUsuarios() {
 
       {/* ── Filtros ── */}
       <div className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-wrap gap-3">
-        {/* Empresa */}
         <select
           value={filtroEmpresa}
-          onChange={(e) => setFiltroEmpresa(e.target.value)}
+          onChange={(e) => cambiarFiltroEmpresa(e.target.value)}
           className="px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 bg-white focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none min-w-[160px]"
         >
           <option value="">Todas las empresas</option>
@@ -447,7 +719,6 @@ export default function GestionUsuarios() {
           ))}
         </select>
 
-        {/* Búsqueda */}
         <div className="flex-1 min-w-[180px] relative">
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
@@ -459,16 +730,25 @@ export default function GestionUsuarios() {
           <input
             type="text"
             value={filtroBuscar}
-            onChange={(e) => setFiltroBuscar(e.target.value)}
+            onChange={(e) => cambiarFiltroBuscar(e.target.value)}
             placeholder="Buscar usuario, DNI, cód.personal…"
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-gray-200 text-sm focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none"
           />
         </div>
 
-        {/* Estado */}
+        <select
+          value={filtroRol}
+          onChange={(e) => cambiarFiltroRol(e.target.value)}
+          className="px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 bg-white focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none"
+        >
+          <option value="">Todos los roles</option>
+          <option value="ADMIN">ADMIN</option>
+          <option value="EMPLEADO">EMPLEADO</option>
+        </select>
+
         <select
           value={filtroActivo}
-          onChange={(e) => setFiltroActivo(e.target.value)}
+          onChange={(e) => cambiarFiltroActivo(e.target.value)}
           className="px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 bg-white focus:border-red-400 focus:ring-1 focus:ring-red-100 outline-none"
         >
           <option value="">Todos los estados</option>
@@ -492,7 +772,7 @@ export default function GestionUsuarios() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 text-left">
-                    {['Usuario', 'Empresa', 'Cód. Personal', 'DNI', 'Estado', ''].map((h) => (
+                    {['Usuario', 'Empresa', 'Cód. Personal', 'DNI', 'Rol', 'Estado', ''].map((h) => (
                       <th key={h} className="px-5 py-3.5 text-xs font-semibold uppercase tracking-wider" style={{ color: GRIS }}>
                         {h}
                       </th>
@@ -510,15 +790,28 @@ export default function GestionUsuarios() {
                           >
                             {u.usuario?.charAt(0)?.toUpperCase() ?? 'U'}
                           </div>
-                          <span className="font-medium text-gray-800">{u.usuario}</span>
+                          <div>
+                            <p className="font-medium text-gray-800">{u.usuario}</p>
+                            {u.cod_personal_jefe && (
+                              <p className="text-xs" style={{ color: GRIS }}>
+                                Jefe: <span className="font-mono">{u.cod_personal_jefe}</span>
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-gray-600 max-w-[180px] truncate">{u.empresa_nombre}</td>
                       <td className="px-5 py-3.5 text-gray-600 font-mono">{u.cod_personal}</td>
                       <td className="px-5 py-3.5 text-gray-600">{u.dni}</td>
+                      <td className="px-5 py-3.5"><BadgeRol rol={u.rol} /></td>
                       <td className="px-5 py-3.5"><BadgeActivo activo={u.activo} /></td>
                       <td className="px-5 py-3.5">
-                        <AccionesRow u={u} onEditar={() => setModalEditar(u)} onPassword={() => setModalPassword(u)} onToggle={() => handleToggle(u)} />
+                        <AccionesRow
+                          u={u}
+                          onEditar={() => setModalEditar(u)}
+                          onPassword={() => setModalPassword(u)}
+                          onToggle={() => handleToggle(u)}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -545,12 +838,18 @@ export default function GestionUsuarios() {
                     </div>
                     <BadgeActivo activo={u.activo} />
                   </div>
-                  <div className="flex gap-4 text-xs text-gray-500 pl-12">
-                    <span><span className="font-medium text-gray-700">Cód:</span> {u.cod_personal}</span>
-                    <span><span className="font-medium text-gray-700">DNI:</span> {u.dni}</span>
+                  <div className="flex items-center gap-3 pl-12 flex-wrap">
+                    <span className="text-xs text-gray-500"><span className="font-medium text-gray-700">Cód:</span> {u.cod_personal}</span>
+                    <span className="text-xs text-gray-500"><span className="font-medium text-gray-700">DNI:</span> {u.dni}</span>
+                    <BadgeRol rol={u.rol} />
                   </div>
                   <div className="pl-12">
-                    <AccionesRow u={u} onEditar={() => setModalEditar(u)} onPassword={() => setModalPassword(u)} onToggle={() => handleToggle(u)} />
+                    <AccionesRow
+                      u={u}
+                      onEditar={() => setModalEditar(u)}
+                      onPassword={() => setModalPassword(u)}
+                      onToggle={() => handleToggle(u)}
+                    />
                   </div>
                 </div>
               ))}
@@ -558,11 +857,14 @@ export default function GestionUsuarios() {
           </>
         )}
 
-        {/* Footer con conteo */}
-        {!loading && usuarios.length > 0 && (
-          <div className="px-5 py-3 border-t border-gray-50 text-xs" style={{ color: GRIS }}>
-            {usuarios.length} {usuarios.length === 1 ? 'usuario' : 'usuarios'} encontrados
-          </div>
+        {/* Footer con paginación */}
+        {!loading && (
+          <Paginacion
+            pagina={pagina}
+            ultimaPagina={meta.ultima_pagina}
+            total={meta.total}
+            onChange={setPagina}
+          />
         )}
       </div>
 
@@ -592,65 +894,9 @@ export default function GestionUsuarios() {
         />
       )}
 
-      {/* ── Toast ── */}
       {toast && (
         <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
       )}
-    </div>
-  );
-}
-
-// ── Botones de acción por fila ─────────────────────────────────────────────
-function AccionesRow({ u, onEditar, onPassword, onToggle }) {
-  return (
-    <div className="flex items-center gap-1">
-      {/* Editar */}
-      <button
-        onClick={onEditar}
-        title="Editar"
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      </button>
-
-      {/* Cambiar contraseña */}
-      <button
-        onClick={onPassword}
-        title="Cambiar contraseña"
-        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
-        </svg>
-      </button>
-
-      {/* Activar / Desactivar */}
-      <button
-        onClick={onToggle}
-        title={u.activo ? 'Desactivar' : 'Activar'}
-        className={cls(
-          'w-8 h-8 rounded-lg flex items-center justify-center transition-colors',
-          u.activo
-            ? 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-            : 'text-gray-400 hover:text-emerald-600 hover:bg-emerald-50'
-        )}
-      >
-        {u.activo ? (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-          </svg>
-        ) : (
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        )}
-      </button>
     </div>
   );
 }
