@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { getVacaciones, getSolicitudesVac, crearSolicitudVac, cancelarSolVac } from '../../api/erp';
+import { getVacaciones, getSolicitudesVac, crearSolicitudVac, cancelarSolVac, getConfigVac } from '../../api/erp';
 import { useAuth } from '../../hooks/useAuth';
+import { imprimirFormularioVac } from '../../utils/formulariosVac';
 
 const ROJO  = '#B11A1A';
 const VERDE = '#059669';
@@ -36,7 +37,7 @@ const ESTADO_LABEL = {
   cancelado:      'Cancelado',
 };
 
-// ── Cálculo de vacaciones (30 días/año, 2.5 días/mes — régimen general Perú) ─
+// ── Cálculo de vacaciones (30 días por cada año completo cumplido; el año en curso no acumula días hasta completarse) ─
 function calcularVac(fechaIngresoRaw, historial) {
   if (!fechaIngresoRaw) return null;
   const ingreso = new Date(fechaIngresoRaw);
@@ -49,8 +50,7 @@ function calcularVac(fechaIngresoRaw, historial) {
   if (meses < 0) { anios--; meses += 12; }
   anios = Math.max(0, anios);
 
-  const mesesTotal     = anios * 12 + meses;
-  const diasAcumulados = Math.floor(mesesTotal * 30 / 12);
+  const diasAcumulados = anios * 30;
   const diasUsados     = (historial ?? []).reduce((s, v) => s + (v.num_dias || 0), 0);
   const saldo          = diasAcumulados - diasUsados;
 
@@ -307,8 +307,18 @@ function SeccionVacAprobadas({ vacData, loading }) {
   );
 }
 
+// ── Icono impresora ───────────────────────────────────────────────────────────
+function IconoPrint() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+    </svg>
+  );
+}
+
 // ── Solicitudes intranet ─────────────────────────────────────────────────────
-function SeccionSolicitudes({ solicitudes, loading, onCancelar }) {
+function SeccionSolicitudes({ solicitudes, loading, onCancelar, onImprimir }) {
   if (loading) return (
     <div className="p-4 space-y-2">
       {[1, 2, 3].map(i => <Skel key={i} />)}
@@ -348,6 +358,18 @@ function SeccionSolicitudes({ solicitudes, loading, onCancelar }) {
 
             <div className="flex items-center gap-2 shrink-0">
               <EstadoBadge estado={s.estado} />
+
+              {/* Botón imprimir formulario */}
+              <button
+                onClick={() => onImprimir(s)}
+                title={s.tipo === 'VC' ? 'Descargar Compra de Vacaciones' : 'Descargar Solicitud de Vacaciones'}
+                className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-lg border transition hover:bg-gray-100"
+                style={{ color: GRIS, borderColor: '#e5e7eb' }}
+              >
+                <IconoPrint />
+                <span className="hidden sm:inline">Descargar</span>
+              </button>
+
               {s.cancelable && (
                 <button
                   onClick={() => onCancelar(s.cod_corr_sol)}
@@ -366,7 +388,7 @@ function SeccionSolicitudes({ solicitudes, loading, onCancelar }) {
 }
 
 // ── Modal nueva solicitud ────────────────────────────────────────────────────
-function SolicitudVacForm({ empleado, user, onClose, onSuccess }) {
+function SolicitudVacForm({ empleado, user, configVac, onClose, onSuccess }) {
   const [form, setForm] = useState({
     tipo:               'VG',
     fec_inicio:         '',
@@ -380,6 +402,10 @@ function SolicitudVacForm({ empleado, user, onClose, onSuccess }) {
   const set  = (field) => (e) => setForm(f => ({ ...f, [field]: e.target.value }));
   const dias = calcDias(form.fec_inicio, form.fec_final);
 
+  const limiteAnio      = configVac?.limite_dias_anio ?? null;
+  const diasUsadosAnio  = configVac?.dias_usados_anio ?? 0;
+  const diasDisponibles = limiteAnio !== null ? Math.max(0, limiteAnio - diasUsadosAnio) : null;
+
   const nombreCompleto =
     empleado?.nombre_completo?.trim() ||
     [user?.ape_paterno, user?.ape_materno, user?.nom_trabajador].filter(Boolean).join(' ') ||
@@ -388,6 +414,10 @@ function SolicitudVacForm({ empleado, user, onClose, onSuccess }) {
   const handleSubmit = async () => {
     if (!form.fec_inicio || !form.fec_final) { setError('Ingresa las fechas de inicio y fin.'); return; }
     if (dias <= 0) { setError('La fecha de fin debe ser igual o posterior a la de inicio.'); return; }
+    if (diasDisponibles !== null && dias > diasDisponibles) {
+      setError(`Superas el límite anual. Solo tienes ${diasDisponibles} día${diasDisponibles !== 1 ? 's' : ''} disponibles este año (${diasUsadosAnio} de ${limiteAnio} usados).`);
+      return;
+    }
 
     const d = new Date(form.fec_inicio + 'T00:00:00');
     const payload = {
@@ -511,6 +541,33 @@ function SolicitudVacForm({ empleado, user, onClose, onSuccess }) {
             </div>
           )}
 
+          {/* Límite anual si está configurado */}
+          {limiteAnio !== null && (
+            <div className="rounded-xl px-4 py-3 text-xs border" style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}>
+              <div className="flex justify-between mb-1">
+                <span>Límite anual</span>
+                <span className="font-bold">
+                  {diasUsadosAnio + (dias > 0 ? dias : 0)} / {limiteAnio} días
+                  {dias > 0 && diasDisponibles !== null && dias <= diasDisponibles && (
+                    <span className="ml-1 text-green-600">✓</span>
+                  )}
+                  {dias > 0 && diasDisponibles !== null && dias > diasDisponibles && (
+                    <span className="ml-1" style={{ color: ROJO }}>excedido</span>
+                  )}
+                </span>
+              </div>
+              <div className="w-full h-1.5 rounded-full bg-blue-100 overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${Math.min(100, Math.round((diasUsadosAnio + (dias > 0 ? dias : 0)) / limiteAnio * 100))}%`,
+                    background: (diasUsadosAnio + (dias > 0 ? dias : 0)) > limiteAnio ? ROJO : '#3b82f6',
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
 
           <div className="flex gap-3 pt-1">
@@ -525,7 +582,7 @@ function SolicitudVacForm({ empleado, user, onClose, onSuccess }) {
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={enviando || dias <= 0}
+              disabled={enviando || dias <= 0 || (diasDisponibles !== null && dias > diasDisponibles)}
               className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white disabled:opacity-50 transition active:scale-95"
               style={{ background: ROJO }}
             >
@@ -544,6 +601,7 @@ export default function MisVacaciones() {
 
   const [vacData,     setVacData]     = useState(null);
   const [solicitudes, setSolicitudes] = useState([]);
+  const [configVac,   setConfigVac]   = useState({ habilitado: true, limite_dias_anio: null, dias_usados_anio: 0 });
   const [loadingVac,  setLoadingVac]  = useState(true);
   const [loadingSol,  setLoadingSol]  = useState(true);
   const [tab,         setTab]         = useState('aprobadas');
@@ -569,9 +627,16 @@ export default function MisVacaciones() {
       .finally(() => setLoadingSol(false));
   };
 
+  const cargarConfig = () => {
+    getConfigVac()
+      .then(({ data }) => setConfigVac(data?.data ?? { habilitado: true, limite_dias_anio: null, dias_usados_anio: 0 }))
+      .catch(() => {});
+  };
+
   useEffect(() => {
     cargarVac();
     cargarSol();
+    cargarConfig();
   }, []);
 
   const mostrarMensaje = (msg, ok = true) => {
@@ -621,8 +686,10 @@ export default function MisVacaciones() {
             </p>
           </div>
           <button
-            onClick={() => setModal(true)}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white transition hover:bg-red-50"
+            onClick={() => configVac.habilitado && setModal(true)}
+            disabled={!configVac.habilitado}
+            title={!configVac.habilitado ? 'No tienes habilitadas las solicitudes de vacaciones. Contacta a RRHH.' : undefined}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-white transition hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
             style={{ color: ROJO }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -644,6 +711,43 @@ export default function MisVacaciones() {
               : { background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}
           >
             {mensaje}
+          </div>
+        )}
+
+        {/* ── Aviso: vacaciones no habilitadas ── */}
+        {!configVac.habilitado && (
+          <div
+            className="rounded-2xl px-5 py-3 text-sm font-medium border flex items-center gap-2"
+            style={{ background: '#fffbeb', borderColor: '#fde68a', color: '#92400e' }}
+          >
+            <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            No tienes habilitadas las solicitudes de vacaciones. Contacta a RRHH para activar este permiso.
+          </div>
+        )}
+
+        {/* ── Info: límite anual ── */}
+        {configVac.habilitado && configVac.limite_dias_anio !== null && (
+          <div
+            className="rounded-2xl px-5 py-3 text-sm border"
+            style={{ background: '#eff6ff', borderColor: '#bfdbfe', color: '#1e40af' }}
+          >
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-semibold">Límite anual de vacaciones</span>
+              <span className="font-bold">
+                {configVac.dias_usados_anio} / {configVac.limite_dias_anio} días usados este año
+              </span>
+            </div>
+            <div className="w-full h-1.5 rounded-full bg-blue-100 overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all"
+                style={{
+                  width: `${Math.min(100, Math.round(configVac.dias_usados_anio / configVac.limite_dias_anio * 100))}%`,
+                  background: configVac.dias_usados_anio >= configVac.limite_dias_anio ? ROJO : '#3b82f6',
+                }}
+              />
+            </div>
           </div>
         )}
 
@@ -691,6 +795,7 @@ export default function MisVacaciones() {
               solicitudes={solicitudes}
               loading={loadingSol}
               onCancelar={cancelarSolicitud}
+              onImprimir={(sol) => imprimirFormularioVac({ solicitud: sol, empleado, user })}
             />
           )}
         </div>
@@ -700,6 +805,7 @@ export default function MisVacaciones() {
         <SolicitudVacForm
           empleado={empleado}
           user={user}
+          configVac={configVac}
           onClose={() => setModal(false)}
           onSuccess={onSuccess}
         />

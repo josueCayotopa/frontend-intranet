@@ -187,7 +187,7 @@ function ComboJefe({ opciones, value, onChange, loading }) {
   const [q, setQ]         = useState('');
   const [open, setOpen]   = useState(false);
 
-  const seleccionado = opciones.find((u) => u.cod_personal === value);
+  const seleccionado = opciones.find((u) => u.usuario === value);
   const etiqueta = seleccionado
     ? `${seleccionado.usuario}${seleccionado.nom_trabajador ? ' · ' + seleccionado.nom_trabajador : ''}`
     : '';
@@ -231,9 +231,9 @@ function ComboJefe({ opciones, value, onChange, loading }) {
               key={u.id}
               className={cls(
                 'px-3 py-2 cursor-pointer hover:bg-red-50 flex items-center justify-between gap-2',
-                u.cod_personal === value && 'bg-red-50'
+                u.usuario === value && 'bg-red-50'
               )}
-              onMouseDown={() => { onChange(u.cod_personal); setOpen(false); setQ(''); }}
+              onMouseDown={() => { onChange(u.usuario); setOpen(false); setQ(''); }}
             >
               <div className="min-w-0">
                 <span className="font-medium text-gray-800">{u.usuario}</span>
@@ -291,15 +291,14 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
   const [jefesOpc,    setJefesOpc]    = useState([]);
   const [loadingJefe, setLoadingJefe] = useState(false);
 
-  // Cargar usuarios de la empresa seleccionada para el picker de jefe
+  // Cargar todos los usuarios al abrir el modal (el jefe puede ser de cualquier empresa)
   useEffect(() => {
-    if (!form.empresa_id) { setJefesOpc([]); return; }
     setLoadingJefe(true);
-    getUsuarios({ empresa_id: form.empresa_id, por_pagina: 200 })
+    getUsuarios({ por_pagina: 200 })
       .then(({ data }) => setJefesOpc(data.data?.items ?? []))
       .catch(() => {})
       .finally(() => setLoadingJefe(false));
-  }, [form.empresa_id]);
+  }, []);
 
   const set = (key) => (e) =>
     setForm((p) => ({ ...p, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
@@ -448,7 +447,7 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
           />
           {form.cod_personal_jefe && (
             <p className="text-xs mt-1" style={{ color: GRIS }}>
-              cod_personal guardado: <span className="font-mono">{form.cod_personal_jefe}</span>
+              Jefe asignado: <span className="font-mono">{form.cod_personal_jefe}</span>
             </p>
           )}
         </Field>

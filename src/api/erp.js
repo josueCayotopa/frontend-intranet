@@ -16,3 +16,10 @@ export const crearSolicitudVac   = (data)               => api.post('/erp/solici
 export const cancelarSolVac      = (codCorrSol)         => api.patch(`/erp/solicitudes-vac/${codCorrSol}/cancelar`);
 
 export const getHorarios         = (mes)                => api.get('/erp/horarios',  { params: { mes } });
+
+// Configuración de vacaciones del trabajador (habilitado + límite anual)
+export const getConfigVac        = ()                   => api.get('/erp/config-vac');
+
+// Registro de visualización de boletas (1 registro por boleta/mes)
+export const getBoletasVistas    = ()                   => api.get('/erp/boletas-vistas');
+export const registrarVisBoleta  = (data)               => api.post('/erp/boletas-vistas', data);
