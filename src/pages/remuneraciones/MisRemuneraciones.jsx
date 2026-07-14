@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getPeriodos, getBoleta } from '../../api/erp';
+import { getPeriodos, getBoleta, getBoletasVistas, registrarVisBoleta } from '../../api/erp';
 import { formatCurrency, formatDateFromISO, MESES } from '../../utils/formatters';
 
 const ROJO = '#B11A1A';
@@ -133,7 +133,10 @@ function BoletaContent({ boleta }) {
           </div>
           {/* Periodo */}
           <div className="text-right shrink-0 space-y-1">
-            <p className="text-gray-600">MES &nbsp;&nbsp;&nbsp;: <span className="font-semibold">{nombreMes(c.rango_fecha?.split(' ')?.[1] ?? '')}</span></p>
+            <p className="text-gray-600">MES &nbsp;&nbsp;&nbsp;: <span className="font-semibold">
+              {/* RANGO_FECHA = "DEL 01/03/2026 AL 31/03/2026" → [1]="01/03/2026" → split('/')[1]="03" */}
+              {nombreMes(c.rango_fecha?.split(' ')?.[1]?.split('/')?.[1] ?? '')}
+            </span></p>
             <p className="text-gray-600">PERIODO : <span className="font-semibold">{c.rango_fecha}</span></p>
           </div>
         </div>
@@ -250,23 +253,154 @@ function TotalBox({ label, value, color }) {
   );
 }
 
+// ── Modal de confirmación: primera vez que se ve la boleta ─────────────────
+function ModalPrimeraVez({ periodo, onConfirmar, onCancelar, onSaltarRegistro, cargando, errorLog }) {
+  const anio    = periodo.slice(0, 4);
+  const mes     = parseInt(periodo.slice(4, 6), 10);
+  const hayError = Boolean(errorLog);
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 flex flex-col items-center gap-4">
+
+        {/* Ícono */}
+        <div
+          className="w-16 h-16 rounded-2xl flex items-center justify-center"
+          style={{ background: '#fef2f2' }}
+        >
+          <svg className="w-8 h-8" fill="none" stroke={ROJO} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+
+        {/* Texto */}
+        <div className="text-center">
+          <h3 className="text-lg font-bold text-gray-900">
+            Boleta de {nombreMes(mes)} {anio}
+          </h3>
+          {!hayError && (
+            <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+              Al continuar quedará registrado que has recibido
+              notificación de tu remuneración de este período.
+            </p>
+          )}
+        </div>
+
+        {/* Bloque de error — visible solo cuando falla el registro */}
+        {hayError && (
+          <div className="w-full rounded-xl px-4 py-3 text-xs border"
+            style={{ background: '#fef2f2', borderColor: '#fecaca', color: '#991b1b' }}>
+            <p className="font-bold mb-1">No se pudo registrar la visualización:</p>
+            <p className="font-mono break-all">{errorLog}</p>
+            <p className="mt-2 text-gray-500">Puedes ver la boleta de todos modos o cancelar.</p>
+          </div>
+        )}
+
+        {/* Botones — cambian según si hay error */}
+        {!hayError ? (
+          <div className="flex gap-3 w-full mt-1">
+            <button
+              onClick={onCancelar}
+              disabled={cargando}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold border transition"
+              style={{ borderColor: '#e5e7eb', color: GRIS }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onConfirmar}
+              disabled={cargando}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition active:scale-95 disabled:opacity-60"
+              style={{ background: ROJO }}
+            >
+              {cargando ? 'Registrando…' : 'Ver boleta'}
+            </button>
+          </div>
+        ) : (
+          <div className="flex gap-3 w-full">
+            <button
+              onClick={onCancelar}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold border transition"
+              style={{ borderColor: '#e5e7eb', color: GRIS }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={onSaltarRegistro}
+              className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition active:scale-95"
+              style={{ background: ROJO }}
+            >
+              Ver sin registrar
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Página principal ───────────────────────────────────────────────────────
 export default function MisRemuneraciones() {
-  const [periodos,            setPeriodos]  = useState([]);
-  const [loading,             setLoading]   = useState(true);
-  const [error,               setError]     = useState('');
+  const [periodos,            setPeriodos]   = useState([]);
+  const [periodosVistos,      setPVis]       = useState(new Set());
+  const [loading,             setLoading]    = useState(true);
+  const [error,               setError]      = useState('');
+  const [errorLog,            setErrorLog]   = useState(''); // error al registrar visualización
   const [periodoSeleccionado, setPeriodoSel] = useState(null);
+  const [periodoConfirmar,    setConfirmar]  = useState(null); // modal 1ª vez
+  const [cargandoLog,         setCargandoLog] = useState(false);
   const [anioFiltro,          setAnioFiltro] = useState('todos');
 
   const cargar = useCallback(() => {
     setLoading(true);
-    getPeriodos(36)
-      .then(({ data }) => setPeriodos(data.data ?? []))
+    Promise.all([
+      getPeriodos(36),
+      getBoletasVistas().catch(() => ({ data: { data: [] } })),
+    ])
+      .then(([resPeriodos, resVistas]) => {
+        setPeriodos(resPeriodos.data.data ?? []);
+        const vistos = new Set((resVistas.data.data ?? []).map((v) => v.periodo));
+        setPVis(vistos);
+      })
       .catch(() => setError('No se pudieron cargar los períodos de boletas.'))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  // Abrir un período: primera vez → modal de confirmación; ya visto → directo
+  const abrirPeriodo = (clave) => {
+    if (periodosVistos.has(clave)) {
+      setPeriodoSel(clave);
+    } else {
+      setConfirmar(clave);
+    }
+  };
+
+  // El usuario confirmó en el modal → registrar + abrir boleta
+  const confirmarPrimeraVez = async () => {
+    setCargandoLog(true);
+    setErrorLog('');
+    try {
+      await registrarVisBoleta({ periodo: periodoConfirmar });
+      setPVis((prev) => new Set([...prev, periodoConfirmar]));
+      setPeriodoSel(periodoConfirmar);
+      setConfirmar(null);
+    } catch (err) {
+      console.error('[boleta-vis] Error al registrar:', err?.response?.data ?? err.message);
+      setErrorLog(err?.response?.data?.message ?? 'No se pudo registrar. Verifica que el SP esté instalado.');
+    } finally {
+      setCargandoLog(false);
+    }
+  };
+
+  // Abrir boleta sin registrar (cuando el registro falla y el usuario quiere continuar)
+  const abrirSinRegistrar = () => {
+    setPeriodoSel(periodoConfirmar);
+    setConfirmar(null);
+    setErrorLog('');
+  };
 
   // Años únicos ordenados de más reciente a más antiguo
   const años = [...new Set(periodos.map((p) => String(p.ANO_PROCESO)))].sort((a, b) => b - a);
@@ -350,17 +484,31 @@ export default function MisRemuneraciones() {
           {/* ── Grilla de períodos ── */}
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
             {periodosFiltrados.map((p) => {
-              const clave = p.periodo_clave ?? (String(p.ANO_PROCESO) + String(p.MES_PROCESO).padStart(2, '0'));
-              const anio  = String(p.ANO_PROCESO);
-              const mes   = p.MES_PROCESO;
-              const col   = colorDeAnio(anio, años);
+              const clave  = p.periodo_clave ?? (String(p.ANO_PROCESO) + String(p.MES_PROCESO).padStart(2, '0'));
+              const anio   = String(p.ANO_PROCESO);
+              const mes    = p.MES_PROCESO;
+              const col    = colorDeAnio(anio, años);
+              const vista  = periodosVistos.has(clave);
               return (
                 <button
                   key={clave}
-                  onClick={() => setPeriodoSel(clave)}
-                  className="group rounded-xl border p-3 text-left active:scale-95 transition-all hover:shadow-md"
-                  style={{ background: col.bg, borderColor: col.border }}
+                  onClick={() => abrirPeriodo(clave)}
+                  className="group rounded-xl border p-3 text-left active:scale-95 transition-all hover:shadow-md relative"
+                  style={{ background: col.bg, borderColor: vista ? '#86efac' : col.border }}
                 >
+                  {/* Indicador "Vista" */}
+                  {vista && (
+                    <span
+                      className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full flex items-center justify-center"
+                      title="Ya visualizada"
+                      style={{ background: '#dcfce7' }}
+                    >
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="#16a34a" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </span>
+                  )}
+
                   {/* Año badge */}
                   <span
                     className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-md mb-1.5"
@@ -368,17 +516,32 @@ export default function MisRemuneraciones() {
                   >
                     {anio}
                   </span>
+
                   {/* Nombre completo del mes */}
                   <p className="text-xs font-bold leading-tight" style={{ color: col.texto }}>
                     {nombreMes(mes)}
                   </p>
-                  {/* Ver boleta */}
-                  <div className="mt-2 flex items-center gap-1" style={{ color: col.texto }}>
-                    <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <span className="text-[10px] font-semibold opacity-70">Ver boleta</span>
+
+                  {/* Estado */}
+                  <div className="mt-2 flex items-center gap-1" style={{ color: vista ? '#16a34a' : col.texto }}>
+                    {vista ? (
+                      <>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                        <span className="text-[10px] font-semibold">Vista</span>
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="text-[10px] font-semibold opacity-70">Ver boleta</span>
+                      </>
+                    )}
                   </div>
                 </button>
               );
@@ -387,7 +550,19 @@ export default function MisRemuneraciones() {
         </>
       )}
 
-      {/* Modal boleta */}
+      {/* Modal confirmación primera vez */}
+      {periodoConfirmar && !periodoSeleccionado && (
+        <ModalPrimeraVez
+          periodo={periodoConfirmar}
+          cargando={cargandoLog}
+          errorLog={errorLog}
+          onConfirmar={confirmarPrimeraVez}
+          onCancelar={() => { setConfirmar(null); setErrorLog(''); }}
+          onSaltarRegistro={abrirSinRegistrar}
+        />
+      )}
+
+      {/* Modal boleta (pasa la boleta al callback de log via prop) */}
       {periodoSeleccionado && (
         <ModalBoleta
           periodo={periodoSeleccionado}
