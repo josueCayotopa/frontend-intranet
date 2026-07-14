@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Instancia apuntando al nuevo backend Laravel v1 (Sanctum + SPs @db_name)
 const apiV1 = axios.create({
-  baseURL: import.meta.env.VITE_API_V1_URL ?? 'http://127.0.0.1:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_V1_URL ?? 'http://api.intranet.clinicalaluz.com.pe',
   headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
 });
 
