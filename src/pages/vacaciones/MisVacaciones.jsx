@@ -37,7 +37,7 @@ const ESTADO_LABEL = {
   cancelado:      'Cancelado',
 };
 
-// ── Cálculo de vacaciones (30 días/año, 2.5 días/mes — régimen general Perú) ─
+// ── Cálculo de vacaciones (30 días por cada año completo cumplido; el año en curso no acumula días hasta completarse) ─
 function calcularVac(fechaIngresoRaw, historial) {
   if (!fechaIngresoRaw) return null;
   const ingreso = new Date(fechaIngresoRaw);
@@ -50,8 +50,7 @@ function calcularVac(fechaIngresoRaw, historial) {
   if (meses < 0) { anios--; meses += 12; }
   anios = Math.max(0, anios);
 
-  const mesesTotal     = anios * 12 + meses;
-  const diasAcumulados = Math.floor(mesesTotal * 30 / 12);
+  const diasAcumulados = anios * 30;
   const diasUsados     = (historial ?? []).reduce((s, v) => s + (v.num_dias || 0), 0);
   const saldo          = diasAcumulados - diasUsados;
 
