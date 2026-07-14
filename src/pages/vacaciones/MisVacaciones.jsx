@@ -463,8 +463,8 @@ function SolicitudVacForm({ empleado, user, configVac, onClose, onSuccess }) {
           <Campo label="Tipo de solicitud">
             <div className="flex gap-2">
               {[
-                { val: 'VG', txt: 'Vacaciones Gozadas' },
-                { val: 'VC', txt: 'Compra de Vacaciones' },
+                { val: 'VG', txt: 'Gozar' },
+                { val: 'VC', txt: 'Comprar' },
               ].map(({ val, txt }) => (
                 <button
                   key={val}
@@ -795,7 +795,7 @@ export default function MisVacaciones() {
               solicitudes={solicitudes}
               loading={loadingSol}
               onCancelar={cancelarSolicitud}
-              onImprimir={(sol) => imprimirFormularioVac({ solicitud: sol, empleado, user, logoUrl: empresa?.logo_url })}
+              onImprimir={(sol) => imprimirFormularioVac({ solicitud: sol, empleado, user, logoUrl: empresa?.logo_url, firmaUrl: user?.firma_url })}
             />
           )}
         </div>

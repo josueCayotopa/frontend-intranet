@@ -69,8 +69,18 @@ function logoCell(logoUrl) {
   `;
 }
 
+// Línea de firma: si hay firma digital la muestra sobre la línea, si no queda en blanco para firmar a mano
+function firmaBlock(firmaUrl) {
+  if (!firmaUrl) return `<div style="border-bottom:1.5px solid #000;height:56px;"></div>`;
+  return `
+    <div style="border-bottom:1.5px solid #000;height:56px;display:flex;align-items:flex-end;justify-content:center;">
+      <img src="${esc(firmaUrl)}" alt="Firma" style="max-width:90%;max-height:52px;object-fit:contain;">
+    </div>
+  `;
+}
+
 // ── HTML Solicitud de Vacaciones (VG) ──────────────────────────────────────
-function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl }) {
+function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl, firmaUrl }) {
   const dias      = solicitud.num_dias ?? 0;
   const fecInicio = solicitud.fec_inicio ?? '';
   const fecFinal  = solicitud.fec_final  ?? '';
@@ -194,7 +204,7 @@ function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol,
 <table class="nb" style="margin-top:38px;">
   <tr>
     <td style="width:33%;text-align:center;padding:0 14px;">
-      <div style="border-bottom:1.5px solid #000;height:56px;"></div>
+      ${firmaBlock(firmaUrl)}
       <div style="font-size:9.5px;font-weight:bold;margin-top:4px;">FIRMA DEL SOLICITANTE</div>
       <div style="font-size:9px;margin-top:2px;">DNI: ${esc(dni)}</div>
     </td>
@@ -221,7 +231,7 @@ function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol,
 }
 
 // ── HTML Compra de Vacaciones (VC) ─────────────────────────────────────────
-function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl }) {
+function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl, firmaUrl }) {
   const dias       = solicitud.num_dias ?? 0;
   const periodo    = solicitud.periodo_vac ?? String(solicitud.ano_proceso ?? '');
   const montoTotal = Number(solicitud.imp_adelanto ?? 0);
@@ -329,7 +339,7 @@ function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitu
 <table class="nb" style="margin-top:36px;">
   <tr>
     <td style="width:33%;text-align:center;padding:0 14px;">
-      <div style="border-bottom:1.5px solid #000;height:56px;"></div>
+      ${firmaBlock(firmaUrl)}
       <div style="font-size:9.5px;font-weight:bold;margin-top:4px;">Firma del Trabajador</div>
       <div style="font-size:9px;margin-top:2px;">DNI: ${esc(dni)}</div>
     </td>
@@ -357,7 +367,7 @@ function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitu
 }
 
 // ── Función principal exportada ────────────────────────────────────────────
-export function imprimirFormularioVac({ solicitud, empleado, user, logoUrl }) {
+export function imprimirFormularioVac({ solicitud, empleado, user, logoUrl, firmaUrl }) {
   const nombre = empleado?.nombre_completo?.trim() ||
     [user?.ape_paterno, user?.ape_materno, user?.nom_trabajador].filter(Boolean).join(' ') ||
     user?.usuario || '';
@@ -383,8 +393,8 @@ export function imprimirFormularioVac({ solicitud, empleado, user, logoUrl }) {
   const aSol = String(hoy.getFullYear());
 
   const html = solicitud.tipo === 'VC'
-    ? htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl })
-    : htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl });
+    ? htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl, firmaUrl })
+    : htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl, firmaUrl });
 
   const win = window.open('', '_blank', 'width=860,height=1000');
   if (!win) {
