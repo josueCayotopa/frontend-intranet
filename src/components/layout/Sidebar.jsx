@@ -140,33 +140,37 @@ function SidebarContent({ onClose }) {
           </NavLink>
         ))}
 
-        {/* Separador Administración */}
-        <div className="pt-3 pb-1">
-          <p className="px-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: GRIS }}>
-            Administración
-          </p>
-        </div>
+        {/* Sección Administración — solo visible para ADMIN */}
+        {user?.rol === 'ADMIN' && (
+          <>
+            <div className="pt-3 pb-1">
+              <p className="px-3 text-[10px] font-bold uppercase tracking-widest" style={{ color: GRIS }}>
+                Administración
+              </p>
+            </div>
 
-        {adminItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={onClose ?? undefined}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
-                isActive ? '' : 'hover:bg-gray-50 active:scale-95'
-              }`
-            }
-            style={({ isActive }) =>
-              isActive
-                ? { background: ROJO, color: '#fff' }
-                : { color: '#374151' }
-            }
-          >
-            {item.icon}
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
+            {adminItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={onClose ?? undefined}
+                className={({ isActive }) =>
+                  `flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-medium transition-all ${
+                    isActive ? '' : 'hover:bg-gray-50 active:scale-95'
+                  }`
+                }
+                style={({ isActive }) =>
+                  isActive
+                    ? { background: ROJO, color: '#fff' }
+                    : { color: '#374151' }
+                }
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       {/* Footer: usuario + logout */}
@@ -176,10 +180,15 @@ function SidebarContent({ onClose }) {
             className="w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0"
             style={{ background: ROJO }}
           >
-            {user?.usuario?.charAt(0)?.toUpperCase() ?? 'U'}
+            {(user?.nom_trabajador ?? user?.usuario ?? 'U').charAt(0).toUpperCase()}
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-gray-800 truncate">{user?.usuario ?? 'Usuario'}</p>
+            <p className="text-sm font-semibold text-gray-800 truncate">
+              {user?.nom_trabajador
+                ? `${user.nom_trabajador} ${user.ape_paterno ?? ''}`.trim()
+                : (user?.usuario ?? 'Usuario')}
+            </p>
+            <p className="text-xs truncate" style={{ color: GRIS }}>{user?.usuario}</p>
           </div>
         </div>
         <button

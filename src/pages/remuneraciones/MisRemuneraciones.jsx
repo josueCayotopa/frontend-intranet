@@ -5,9 +5,24 @@ import { formatCurrency, formatDateFromISO, MESES } from '../../utils/formatters
 const ROJO = '#B11A1A';
 const GRIS = '#8B8889';
 
+// Color por año — se repite cíclicamente si hay más de 5 años
+const PALETA_AÑOS = [
+  { bg: '#fdf2f2', border: '#fca5a5', texto: '#B11A1A', badge: '#B11A1A' }, // rojo
+  { bg: '#eff6ff', border: '#93c5fd', texto: '#1d4ed8', badge: '#1d4ed8' }, // azul
+  { bg: '#f0fdf4', border: '#86efac', texto: '#15803d', badge: '#15803d' }, // verde
+  { bg: '#faf5ff', border: '#c4b5fd', texto: '#6d28d9', badge: '#6d28d9' }, // violeta
+  { bg: '#fff7ed', border: '#fdba74', texto: '#c2410c', badge: '#c2410c' }, // naranja
+];
+
+function colorDeAnio(anio, añosOrdenados) {
+  const idx = añosOrdenados.indexOf(String(anio));
+  return PALETA_AÑOS[idx % PALETA_AÑOS.length];
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 function nombreMes(mes) {
-  return MESES[parseInt(mes, 10)] ?? mes;
+  const n = parseInt(mes, 10);
+  return (n >= 1 && n <= 12) ? MESES[n] : '—';
 }
 
 function periodoLabel(anio, mes) {
@@ -237,14 +252,15 @@ function TotalBox({ label, value, color }) {
 
 // ── Página principal ───────────────────────────────────────────────────────
 export default function MisRemuneraciones() {
-  const [periodos,        setPeriodos]        = useState([]);
-  const [loading,         setLoading]         = useState(true);
-  const [error,           setError]           = useState('');
-  const [periodoSeleccionado, setPeriodoSel]  = useState(null);
+  const [periodos,            setPeriodos]  = useState([]);
+  const [loading,             setLoading]   = useState(true);
+  const [error,               setError]     = useState('');
+  const [periodoSeleccionado, setPeriodoSel] = useState(null);
+  const [anioFiltro,          setAnioFiltro] = useState('todos');
 
   const cargar = useCallback(() => {
     setLoading(true);
-    getPeriodos(18)
+    getPeriodos(36)
       .then(({ data }) => setPeriodos(data.data ?? []))
       .catch(() => setError('No se pudieron cargar los períodos de boletas.'))
       .finally(() => setLoading(false));
@@ -252,26 +268,30 @@ export default function MisRemuneraciones() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
+  // Años únicos ordenados de más reciente a más antiguo
+  const años = [...new Set(periodos.map((p) => String(p.ANO_PROCESO)))].sort((a, b) => b - a);
+
+  const periodosFiltrados = anioFiltro === 'todos'
+    ? periodos
+    : periodos.filter((p) => String(p.ANO_PROCESO) === anioFiltro);
+
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5">
 
       {/* Encabezado */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Mis Remuneraciones</h1>
         <p className="text-sm mt-0.5" style={{ color: GRIS }}>
-          Selecciona un mes para ver tu boleta de pago
+          Selecciona un período para ver tu boleta de pago
         </p>
       </div>
 
-      {/* Estados */}
       {loading && <SkeletonPeriodos />}
 
       {error && !loading && (
         <div className="bg-white rounded-2xl border border-red-100 p-8 text-center">
           <p className="text-red-500 font-medium mb-3">{error}</p>
-          <button onClick={cargar} className="text-sm font-semibold underline" style={{ color: ROJO }}>
-            Reintentar
-          </button>
+          <button onClick={cargar} className="text-sm font-semibold underline" style={{ color: ROJO }}>Reintentar</button>
         </div>
       )}
 
@@ -281,37 +301,90 @@ export default function MisRemuneraciones() {
         </div>
       )}
 
-      {/* Grilla de períodos */}
       {!loading && !error && periodos.length > 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-          {periodos.map((p) => {
-            const clave = p.periodo_clave ?? (p.ANO_PROCESO + p.MES_PROCESO);
-            const anio  = p.ANO_PROCESO;
-            const mes   = p.MES_PROCESO;
-            return (
-              <button
-                key={clave}
-                onClick={() => setPeriodoSel(clave)}
-                className="group bg-white rounded-2xl border border-gray-100 p-4 text-left hover:border-red-200 hover:shadow-md active:scale-95 transition-all"
-              >
-                <p
-                  className="text-2xl font-black leading-none group-hover:text-red-700 transition-colors"
-                  style={{ color: ROJO }}
+        <>
+          {/* ── Filtro por año ── */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setAnioFiltro('todos')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
+              style={anioFiltro === 'todos'
+                ? { background: ROJO, color: '#fff' }
+                : { background: '#f3f4f6', color: GRIS }}
+            >
+              Todos
+            </button>
+            {años.map((anio) => {
+              const col = colorDeAnio(anio, años);
+              const activo = anioFiltro === anio;
+              return (
+                <button
+                  key={anio}
+                  onClick={() => setAnioFiltro(anio)}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all border"
+                  style={activo
+                    ? { background: col.badge, color: '#fff', borderColor: col.badge }
+                    : { background: col.bg, color: col.texto, borderColor: col.border }}
                 >
-                  {nombreMes(mes).slice(0, 3).toUpperCase()}
-                </p>
-                <p className="text-sm font-semibold text-gray-700 mt-1">{nombreMes(mes)}</p>
-                <p className="text-xs font-medium mt-0.5" style={{ color: GRIS }}>{anio}</p>
-                <div className="mt-3 flex items-center gap-1 text-xs font-semibold" style={{ color: ROJO }}>
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Ver boleta
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  {anio}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Leyenda de colores ── */}
+          {anioFiltro === 'todos' && años.length > 1 && (
+            <div className="flex items-center gap-3 flex-wrap">
+              {años.map((anio) => {
+                const col = colorDeAnio(anio, años);
+                return (
+                  <div key={anio} className="flex items-center gap-1.5">
+                    <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: col.badge }} />
+                    <span className="text-xs font-medium" style={{ color: GRIS }}>{anio}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Grilla de períodos ── */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+            {periodosFiltrados.map((p) => {
+              const clave = p.periodo_clave ?? (String(p.ANO_PROCESO) + String(p.MES_PROCESO).padStart(2, '0'));
+              const anio  = String(p.ANO_PROCESO);
+              const mes   = p.MES_PROCESO;
+              const col   = colorDeAnio(anio, años);
+              return (
+                <button
+                  key={clave}
+                  onClick={() => setPeriodoSel(clave)}
+                  className="group rounded-xl border p-3 text-left active:scale-95 transition-all hover:shadow-md"
+                  style={{ background: col.bg, borderColor: col.border }}
+                >
+                  {/* Año badge */}
+                  <span
+                    className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded-md mb-1.5"
+                    style={{ background: col.badge, color: '#fff' }}
+                  >
+                    {anio}
+                  </span>
+                  {/* Nombre completo del mes */}
+                  <p className="text-xs font-bold leading-tight" style={{ color: col.texto }}>
+                    {nombreMes(mes)}
+                  </p>
+                  {/* Ver boleta */}
+                  <div className="mt-2 flex items-center gap-1" style={{ color: col.texto }}>
+                    <svg className="w-3 h-3 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span className="text-[10px] font-semibold opacity-70">Ver boleta</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Modal boleta */}

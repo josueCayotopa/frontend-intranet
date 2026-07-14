@@ -9,11 +9,13 @@ export default function Login() {
   const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm]     = useState({ usuario: '', password: '' });
-  const [error, setError]   = useState('');
+  const [form, setForm]       = useState({ usuario: '', password: '' });
+  const [error, setError]     = useState('');
   const [loading, setLoading] = useState(false);
 
-  if (isAuthenticated) return <Navigate to="/dashboard" replace />;
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const handleChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
