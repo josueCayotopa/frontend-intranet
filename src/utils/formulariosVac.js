@@ -52,15 +52,25 @@ const CSS = `
   }
 `;
 
-const LOGO = `
+const LOGO_FALLBACK = `
   <td style="width:125px;text-align:center;padding:9px 16px;border-right:1.5px solid #000;">
     <div style="font-size:9px;font-weight:bold;color:#B11A1A;letter-spacing:1px;">Clínica</div>
     <div style="font-size:23px;font-weight:900;color:#B11A1A;line-height:1.1;letter-spacing:-.5px;">La Luz</div>
   </td>
 `;
 
+// Celda de logo: usa el logo de la empresa si existe, si no cae al logo de texto fijo
+function logoCell(logoUrl) {
+  if (!logoUrl) return LOGO_FALLBACK;
+  return `
+    <td style="width:125px;text-align:center;padding:9px 16px;border-right:1.5px solid #000;">
+      <img src="${esc(logoUrl)}" alt="Logo" style="max-width:105px;max-height:65px;object-fit:contain;">
+    </td>
+  `;
+}
+
 // ── HTML Solicitud de Vacaciones (VG) ──────────────────────────────────────
-function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud }) {
+function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl }) {
   const dias      = solicitud.num_dias ?? 0;
   const fecInicio = solicitud.fec_inicio ?? '';
   const fecFinal  = solicitud.fec_final  ?? '';
@@ -79,7 +89,7 @@ function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol,
 <!-- CABECERA -->
 <table>
   <tr>
-    ${LOGO}
+    ${logoCell(logoUrl)}
     <td style="text-align:center;font-size:19px;font-weight:bold;vertical-align:middle;">
       SOLICITUD DE VACACIONES
     </td>
@@ -211,7 +221,7 @@ function htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol,
 }
 
 // ── HTML Compra de Vacaciones (VC) ─────────────────────────────────────────
-function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud }) {
+function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl }) {
   const dias       = solicitud.num_dias ?? 0;
   const periodo    = solicitud.periodo_vac ?? String(solicitud.ano_proceso ?? '');
   const montoTotal = Number(solicitud.imp_adelanto ?? 0);
@@ -231,7 +241,7 @@ function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitu
 <!-- CABECERA -->
 <table>
   <tr>
-    ${LOGO}
+    ${logoCell(logoUrl)}
     <td style="text-align:center;font-size:19px;font-weight:bold;vertical-align:middle;">
       COMPRA DE VACACIONES
     </td>
@@ -347,7 +357,7 @@ function htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitu
 }
 
 // ── Función principal exportada ────────────────────────────────────────────
-export function imprimirFormularioVac({ solicitud, empleado, user }) {
+export function imprimirFormularioVac({ solicitud, empleado, user, logoUrl }) {
   const nombre = empleado?.nombre_completo?.trim() ||
     [user?.ape_paterno, user?.ape_materno, user?.nom_trabajador].filter(Boolean).join(' ') ||
     user?.usuario || '';
@@ -373,8 +383,8 @@ export function imprimirFormularioVac({ solicitud, empleado, user }) {
   const aSol = String(hoy.getFullYear());
 
   const html = solicitud.tipo === 'VC'
-    ? htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud })
-    : htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud });
+    ? htmlCompraVac({ nombre, dni, cargo, area, empresa, fecIngreso, solicitud, logoUrl })
+    : htmlSolicitudVac({ nombre, dni, cargo, empresa, sede, fecIngreso, dSol, mSol, aSol, solicitud, logoUrl });
 
   const win = window.open('', '_blank', 'width=860,height=1000');
   if (!win) {
