@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getTrabajador } from '../../api/erp';
-import { getSesionesRequest, cerrarSesionRequest, subirFotoRequest } from '../../api/auth';
+import { getSesionesRequest, cerrarSesionRequest, subirFotoRequest, subirFirmaRequest } from '../../api/auth';
 import { useAuth } from '../../hooks/useAuth';
 import { formatDateFromISO } from '../../utils/formatters';
 
@@ -271,6 +271,11 @@ export default function MiPerfil() {
   const [fotoError,  setFotoError]  = useState('');
   const fileRef = useRef(null);
 
+  const [firmaUrl,     setFirmaUrl]     = useState(resolverFotoUrl(user?.firma_url));
+  const [subiendoFirma, setSubiendoFirma] = useState(false);
+  const [firmaError,   setFirmaError]   = useState('');
+  const firmaFileRef = useRef(null);
+
   const cargarPerfil = () => {
     setLoading(true);
     setError('');
@@ -299,6 +304,27 @@ export default function MiPerfil() {
       setFotoError('No se pudo subir la foto.');
     } finally {
       setSubiendo(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFirmaChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFirmaError('');
+    setSubiendoFirma(true);
+    const fd = new FormData();
+    fd.append('firma', file);
+    try {
+      const { data } = await subirFirmaRequest(fd);
+      const nuevaUrl = data.data?.firma_url;
+      const urlResuelta = resolverFotoUrl(nuevaUrl);
+      setFirmaUrl(urlResuelta);
+      updateUser?.({ firma_url: nuevaUrl });
+    } catch {
+      setFirmaError('No se pudo subir la firma.');
+    } finally {
+      setSubiendoFirma(false);
       e.target.value = '';
     }
   };
@@ -456,6 +482,43 @@ export default function MiPerfil() {
                     </svg>
                     Cambiar contraseña
                   </Link>
+                </div>
+              </Section>
+
+              <Section title="Firma Digital">
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-32 h-20 rounded-xl border border-dashed border-gray-200 flex items-center justify-center bg-gray-50 shrink-0 overflow-hidden"
+                  >
+                    {firmaUrl ? (
+                      <img src={firmaUrl} alt="Firma digital" className="max-w-full max-h-full object-contain" />
+                    ) : (
+                      <span className="text-[10px] text-gray-400 text-center px-2">Sin firma registrada</span>
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs mb-2" style={{ color: GRIS }}>
+                      Sube una imagen de tu firma para usarla en tus documentos y formularios.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => firmaFileRef.current?.click()}
+                      disabled={subiendoFirma}
+                      className="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                      style={{ background: '#fdf2f2', color: ROJO }}
+                    >
+                      {subiendoFirma ? 'Subiendo…' : (firmaUrl ? 'Cambiar firma' : 'Subir firma')}
+                    </button>
+                    {firmaError && <p className="text-xs mt-1.5" style={{ color: ROJO }}>{firmaError}</p>}
+                    <input
+                      ref={firmaFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handleFirmaChange}
+                    />
+                  </div>
                 </div>
               </Section>
 

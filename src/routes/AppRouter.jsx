@@ -8,6 +8,7 @@ import MiPerfil from '../pages/perfil/MiPerfil';
 import MisRemuneraciones from '../pages/remuneraciones/MisRemuneraciones';
 import MisVacaciones from '../pages/vacaciones/MisVacaciones';
 import GestionUsuarios from '../pages/admin/GestionUsuarios';
+import GestionEmpresas from '../pages/admin/GestionEmpresas';
 import Layout from '../components/layout/Layout';
 
 export default function AppRouter() {
@@ -44,6 +45,14 @@ export default function AppRouter() {
             element={
               <AdminRoute>
                 <GestionUsuarios />
+              </AdminRoute>
+            }
+          />
+          <Route
+            path="admin/empresas"
+            element={
+              <AdminRoute>
+                <GestionEmpresas />
               </AdminRoute>
             }
           />

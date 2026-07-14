@@ -597,7 +597,7 @@ function SolicitudVacForm({ empleado, user, configVac, onClose, onSuccess }) {
 
 // ── Página principal ─────────────────────────────────────────────────────────
 export default function MisVacaciones() {
-  const { user } = useAuth();
+  const { user, empresa } = useAuth();
 
   const [vacData,     setVacData]     = useState(null);
   const [solicitudes, setSolicitudes] = useState([]);
@@ -795,7 +795,7 @@ export default function MisVacaciones() {
               solicitudes={solicitudes}
               loading={loadingSol}
               onCancelar={cancelarSolicitud}
-              onImprimir={(sol) => imprimirFormularioVac({ solicitud: sol, empleado, user })}
+              onImprimir={(sol) => imprimirFormularioVac({ solicitud: sol, empleado, user, logoUrl: empresa?.logo_url })}
             />
           )}
         </div>

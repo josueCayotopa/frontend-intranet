@@ -192,32 +192,53 @@ function ComboJefe({ opciones, value, onChange, loading }) {
     ? `${seleccionado.usuario}${seleccionado.nom_trabajador ? ' · ' + seleccionado.nom_trabajador : ''}`
     : '';
 
-  const filtrados = q.trim()
-    ? opciones.filter(
-        (u) =>
-          u.usuario.toLowerCase().includes(q.toLowerCase()) ||
-          (u.nom_trabajador ?? '').toLowerCase().includes(q.toLowerCase()) ||
+  const term = q.trim().toLowerCase();
+  const filtrados = term
+    ? opciones.filter((u) => {
+        const nombreCompleto1 = [u.nom_trabajador, u.ape_paterno, u.ape_materno].filter(Boolean).join(' ').toLowerCase();
+        const nombreCompleto2 = [u.ape_paterno, u.ape_materno, u.nom_trabajador].filter(Boolean).join(' ').toLowerCase();
+        return (
+          u.usuario.toLowerCase().includes(term) ||
+          (u.nom_trabajador ?? '').toLowerCase().includes(term) ||
+          (u.ape_paterno ?? '').toLowerCase().includes(term) ||
+          (u.ape_materno ?? '').toLowerCase().includes(term) ||
+          nombreCompleto1.includes(term) ||
+          nombreCompleto2.includes(term) ||
           (u.dni ?? '').includes(q) ||
           (u.cod_personal ?? '').includes(q)
-      )
+        );
+      })
     : opciones;
+
+  const LIMITE_SIN_BUSQUEDA = 150;
+  const mostrarTodos = term.length > 0 || filtrados.length <= LIMITE_SIN_BUSQUEDA;
+  const visibles = mostrarTodos ? filtrados : filtrados.slice(0, LIMITE_SIN_BUSQUEDA);
 
   return (
     <div className="relative">
-      <input
-        type="text"
-        value={open ? q : etiqueta}
-        placeholder={loading ? 'Cargando usuarios…' : 'Buscar por usuario, nombre o DNI…'}
-        disabled={loading || opciones.length === 0}
-        className={cls(
-          'w-full px-3 py-2.5 rounded-xl border text-sm outline-none transition-colors',
-          'border-gray-200 focus:border-red-400 focus:ring-1 focus:ring-red-100',
-          (loading || opciones.length === 0) && 'bg-gray-50 cursor-not-allowed text-gray-400'
-        )}
-        onChange={(e) => { setQ(e.target.value); setOpen(true); }}
-        onFocus={() => { setQ(''); setOpen(true); }}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-      />
+      <div className="relative">
+        <svg
+          className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+        <input
+          type="text"
+          value={open ? q : etiqueta}
+          placeholder={loading ? 'Cargando usuarios…' : 'Buscar por usuario, nombre, apellido o DNI…'}
+          disabled={loading || opciones.length === 0}
+          className={cls(
+            'w-full pl-9 pr-3 py-2.5 rounded-xl border text-sm outline-none transition-colors',
+            'border-gray-200 focus:border-red-400 focus:ring-1 focus:ring-red-100',
+            (loading || opciones.length === 0) && 'bg-gray-50 cursor-not-allowed text-gray-400'
+          )}
+          onChange={(e) => { setQ(e.target.value); setOpen(true); }}
+          onFocus={() => { setQ(''); setOpen(true); }}
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+        />
+      </div>
       {open && (
         <ul className="absolute z-50 w-full bg-white border border-gray-200 rounded-xl shadow-lg mt-1 max-h-52 overflow-y-auto text-sm">
           <li
@@ -226,7 +247,7 @@ function ComboJefe({ opciones, value, onChange, loading }) {
           >
             Sin jefe asignado
           </li>
-          {filtrados.slice(0, 60).map((u) => (
+          {visibles.map((u) => (
             <li
               key={u.id}
               className={cls(
@@ -246,6 +267,11 @@ function ComboJefe({ opciones, value, onChange, loading }) {
           ))}
           {filtrados.length === 0 && (
             <li className="px-3 py-2 text-gray-400 italic">Sin resultados</li>
+          )}
+          {!mostrarTodos && (
+            <li className="px-3 py-2 text-[11px] text-gray-400 italic border-t border-gray-100">
+              Mostrando {visibles.length} de {filtrados.length} — escribe para filtrar
+            </li>
           )}
         </ul>
       )}
@@ -294,7 +320,7 @@ function ModalUsuario({ modo, usuario, empresas, onClose, onGuardado }) {
   // Cargar todos los usuarios al abrir el modal (el jefe puede ser de cualquier empresa)
   useEffect(() => {
     setLoadingJefe(true);
-    getUsuarios({ por_pagina: 200 })
+    getUsuarios({ por_pagina: 'todos' })
       .then(({ data }) => setJefesOpc(data.data?.items ?? []))
       .catch(() => {})
       .finally(() => setLoadingJefe(false));
