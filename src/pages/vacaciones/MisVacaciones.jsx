@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getVacaciones, getSolicitudesVac, crearSolicitudVac, cancelarSolVac, getConfigVac } from '../../api/erp';
+import { getVacaciones, getVacacionesConsolidado, getSolicitudesVac, crearSolicitudVac, cancelarSolVac, getConfigVac } from '../../api/erp';
 import { useAuth } from '../../hooks/useAuth';
 import { imprimirFormularioVac } from '../../utils/formulariosVac';
 
@@ -139,7 +139,7 @@ function FlujoEstado({ estado }) {
 }
 
 // ── Calculadora + historial RRHH ─────────────────────────────────────────────
-function SeccionVacAprobadas({ vacData, loading }) {
+function SeccionVacAprobadas({ vacData, loading, consolidado }) {
   if (loading) {
     return (
       <div className="p-5 space-y-3">
@@ -151,7 +151,15 @@ function SeccionVacAprobadas({ vacData, loading }) {
 
   const historial    = vacData?.historial ?? [];
   const empleado     = vacData?.empleado  ?? {};
-  const calc         = calcularVac(empleado.fecha_ingreso, historial);
+  const calcLocal     = calcularVac(empleado.fecha_ingreso, historial);
+  const esMultiEmpresa = !!consolidado?.multi_empresa;
+
+  // Cuando el trabajador pasó por varias empresas del grupo, el saldo real
+  // es la suma de bloques por empresa (consolidado), no el cálculo de una sola.
+  const calc = esMultiEmpresa
+    ? { anios: calcLocal?.anios ?? 0, meses: calcLocal?.meses ?? 0,
+        diasAcumulados: consolidado.dias_acumulados, diasUsados: consolidado.dias_gozados, saldo: consolidado.saldo }
+    : calcLocal;
   const saldoPositivo = (calc?.saldo ?? 0) >= 0;
 
   return (
@@ -600,6 +608,7 @@ export default function MisVacaciones() {
   const { user, empresa } = useAuth();
 
   const [vacData,     setVacData]     = useState(null);
+  const [consolidado, setConsolidado] = useState(null);
   const [solicitudes, setSolicitudes] = useState([]);
   const [configVac,   setConfigVac]   = useState({ habilitado: true, limite_dias_anio: null, dias_usados_anio: 0 });
   const [loadingVac,  setLoadingVac]  = useState(true);
@@ -617,6 +626,10 @@ export default function MisVacaciones() {
       .then(({ data }) => setVacData(data?.data ?? null))
       .catch(() => {})
       .finally(() => setLoadingVac(false));
+
+    getVacacionesConsolidado()
+      .then(({ data }) => setConsolidado(data?.data ?? null))
+      .catch(() => setConsolidado(null));
   };
 
   const cargarSol = () => {
@@ -663,8 +676,12 @@ export default function MisVacaciones() {
     }
   };
 
-  // Saldo rápido para el stat card superior
-  const calc = calcularVac(empleado?.fecha_ingreso, vacData?.historial);
+  // Saldo rápido para el stat card superior — usa el consolidado si trabajó
+  // en más de una empresa del corporativo, si no el cálculo de la empresa actual.
+  const calcLocal = calcularVac(empleado?.fecha_ingreso, vacData?.historial);
+  const calc = consolidado?.multi_empresa
+    ? { ...calcLocal, diasUsados: consolidado.dias_gozados, saldo: consolidado.saldo }
+    : calcLocal;
 
   const tabs = [
     { id: 'aprobadas',   label: 'Mis Vacaciones' },
@@ -789,6 +806,7 @@ export default function MisVacaciones() {
             <SeccionVacAprobadas
               vacData={vacData}
               loading={loadingVac}
+              consolidado={consolidado}
             />
           ) : (
             <SeccionSolicitudes

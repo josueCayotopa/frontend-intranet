@@ -7,6 +7,9 @@ export const getBoleta           = (periodo)            => api.get('/erp/boleta'
 
 // Vacaciones procesadas por RRHH (PLA_VACACIONES_MES_CAB)
 export const getVacaciones       = ()                   => api.get('/erp/vacaciones');
+
+// Vacaciones acumuladas en TODAS las empresas del corporativo (multi-empresa)
+export const getVacacionesConsolidado = ()              => api.get('/erp/vacaciones-consolidado');
 export const aprobarVac          = (codCorrVac, data)   => api.patch(`/erp/vacaciones/${codCorrVac}/aprobar`, data);
 export const cancelarVac         = (codCorrVac)         => api.patch(`/erp/vacaciones/${codCorrVac}/cancelar`);
 
