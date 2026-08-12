@@ -118,8 +118,8 @@ function BoletaContent({ boleta }) {
           {/* Logo */}
           <div className="shrink-0">
             <img
-              src="/logo.png"
-              alt="Clínica La Luz"
+              src={c.logo_url || '/logo.png'}
+              alt={c.empresa_nombre || 'Logo empresa'}
               className="h-14 object-contain"
               onError={(e) => { e.target.style.display = 'none'; }}
             />
@@ -166,7 +166,7 @@ function BoletaContent({ boleta }) {
           <DatoRow label="Sueldo Básico"       value={formatCurrency(c.sueldo)} />
           <DatoRow label="Horas de trabajo"    value={c.horas_trabajadas} />
           <DatoRow label="Días laborados"      value={c.num_dias} />
-          <DatoRow label="Días No Laborados"   value={c.num_dias_mes != null && c.num_dias != null ? (c.num_dias_mes - c.num_dias) || '' : ''} />
+          <DatoRow label="Días No Laborados"   value="" />
           <DatoRow label="Días Subsidiados"    value="" />
           <DatoRow label="Días de Vacaciones"  value={c.dias_vac} />
           <DatoRow label="Hor.Extras 25%"      value={`${c.hextra ?? '0.00'}`} />
