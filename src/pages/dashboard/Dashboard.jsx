@@ -205,7 +205,7 @@ export default function Dashboard() {
         </Card>
 
         {/* ── Vacaciones días gozados ── */}
-        <Card to="/vacaciones" className="col-span-1 row-span-1 p-5 flex flex-col items-center justify-center relative overflow-hidden">
+        {/* <Card to="/vacaciones" className="col-span-1 row-span-1 p-5 flex flex-col items-center justify-center relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 rounded-t-3xl" style={{ background: ROJO, opacity: 0.15 }} />
           <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: GRIS }}>
             Días gozados
@@ -220,7 +220,7 @@ export default function Dashboard() {
           <p className="text-xs mt-1 font-medium" style={{ color: GRIS }}>
             {new Date().getFullYear()}
           </p>
-        </Card>
+        </Card> */}
 
         {/* ── Solicitudes pendientes ── */}
         {/* <Link
