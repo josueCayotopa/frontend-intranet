@@ -223,7 +223,7 @@ export default function Dashboard() {
         </Card>
 
         {/* ── Solicitudes pendientes ── */}
-        <Link
+        {/* <Link
           to="/vacaciones"
           className="col-span-2 row-span-1 rounded-3xl p-6 flex flex-col justify-center relative overflow-hidden group"
           style={{ background: ROJO }}
@@ -246,7 +246,7 @@ export default function Dashboard() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
             </svg>
           </span>
-        </Link>
+        </Link> */}
 
       </div>
 
