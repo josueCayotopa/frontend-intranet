@@ -7,6 +7,11 @@ import Dashboard from '../pages/dashboard/Dashboard';
 import MiPerfil from '../pages/perfil/MiPerfil';
 import MisRemuneraciones from '../pages/remuneraciones/MisRemuneraciones';
 import MisVacaciones from '../pages/vacaciones/MisVacaciones';
+import MiEquipoEvaluaciones from '../pages/equipo/MiEquipoEvaluaciones';
+import AprobarVacaciones from '../pages/equipo/AprobarVacaciones';
+import AprobarEvaluaciones from '../pages/equipo/AprobarEvaluaciones';
+import AprobarEvaluacion from '../pages/equipo/AprobarEvaluacion';
+import EvaluarTrabajador from '../pages/equipo/EvaluarTrabajador';
 import GestionUsuarios from '../pages/admin/GestionUsuarios';
 import GestionEmpresas from '../pages/admin/GestionEmpresas';
 import Layout from '../components/layout/Layout';
@@ -40,6 +45,11 @@ export default function AppRouter() {
           <Route path="perfil" element={<MiPerfil />} />
           <Route path="remuneraciones" element={<MisRemuneraciones />} />
           <Route path="vacaciones" element={<MisVacaciones />} />
+          <Route path="equipo/vacaciones" element={<AprobarVacaciones />} />
+          <Route path="equipo/aprobaciones" element={<AprobarEvaluaciones />} />
+          <Route path="equipo/aprobaciones/:empresa/:codPersonal/:periodo" element={<AprobarEvaluacion />} />
+          <Route path="equipo/evaluaciones" element={<MiEquipoEvaluaciones />} />
+          <Route path="equipo/evaluaciones/:empresa/:codPersonal" element={<EvaluarTrabajador />} />
           <Route
             path="admin/usuarios"
             element={

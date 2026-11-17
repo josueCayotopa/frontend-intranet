@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { getEsJefe } from '../../api/equipo';
 
 const ROJO = '#B11A1A';
 const GRIS = '#8B8889';
@@ -73,9 +75,74 @@ const adminItems = [
 // ─────────────────────────────────────────────────────────────────────────────
 // Contenido del sidebar (compartido entre desktop y drawer móvil)
 // ─────────────────────────────────────────────────────────────────────────────
+// Solo para aprobadores de evaluaciones (users.usuario = su login en alguna empresa).
+const aprobacionesItem = {
+  to: '/equipo/aprobaciones',
+  label: 'Aprobar evaluaciones',
+  icon: (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+    </svg>
+  ),
+};
+
+// Solo para jefes: aprobar las solicitudes de vacaciones de su personal.
+const vacacionesItem = {
+  to: '/equipo/vacaciones',
+  label: 'Aprobar vacaciones',
+  icon: (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2zm4-5l2 2 4-4" />
+    </svg>
+  ),
+};
+
+// Solo para jefes: personal a cargo en la intranet (COD_PERSONAL_JEFE).
+const equipoItem = {
+  to: '/equipo/evaluaciones',
+  label: 'Evaluar a mi personal',
+  icon: (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  ),
+};
+
 function SidebarContent({ onClose }) {
   const { user, empresa, logout } = useAuth();
   const navigate = useNavigate();
+  const [esJefe, setEsJefe] = useState(false);
+
+  const [vacPendientes, setVacPendientes] = useState(0);
+  const [esAprobador, setEsAprobador] = useState(false);
+  const [aprobPendientes, setAprobPendientes] = useState(0);
+
+  useEffect(() => {
+    let vigente = true;
+    const cargar = () => getEsJefe()
+      .then(({ data }) => {
+        if (!vigente) return;
+        setEsJefe(Boolean(data.data?.es_jefe));
+        setVacPendientes(Number(data.data?.vacaciones_pendientes ?? 0));
+        setEsAprobador(Boolean(data.data?.es_aprobador));
+        setAprobPendientes(Number(data.data?.aprobaciones_pendientes ?? 0));
+      })
+      .catch(() => {});
+    cargar();
+    // Las páginas del jefe y del aprobador avisan cuando deciden, para refrescar los contadores.
+    window.addEventListener('equipo:actualizado', cargar);
+    return () => { vigente = false; window.removeEventListener('equipo:actualizado', cargar); };
+  }, []);
+
+  const items = [
+    ...navItems,
+    ...(esJefe ? [vacacionesItem, equipoItem] : []),
+    ...(esAprobador ? [aprobacionesItem] : []),
+  ];
+  const contador = (item) => (item === vacacionesItem ? vacPendientes : item === aprobacionesItem ? aprobPendientes : 0);
 
   const handleLogout = () => {
     logout();
@@ -129,7 +196,7 @@ function SidebarContent({ onClose }) {
 
       {/* Navegación */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
+        {items.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -146,7 +213,13 @@ function SidebarContent({ onClose }) {
             }
           >
             {item.icon}
-            <span>{item.label}</span>
+            <span className="flex-1">{item.label}</span>
+            {contador(item) > 0 && (
+              <span className="min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-bold flex items-center justify-center bg-amber-100 text-amber-800"
+                aria-label={`${contador(item)} por atender`}>
+                {contador(item)}
+              </span>
+            )}
           </NavLink>
         ))}
 
