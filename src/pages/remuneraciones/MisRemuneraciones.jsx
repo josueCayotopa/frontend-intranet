@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getPeriodos, getBoleta, getBoletasVistas, registrarVisBoleta } from '../../api/erp';
+import { getPeriodos, getBoleta, getBoletasVistas, registrarVisBoleta, confirmarBoleta } from '../../api/erp';
 import { formatCurrency, formatDateFromISO, MESES } from '../../utils/formatters';
 
 const ROJO = '#B11A1A';
@@ -51,7 +51,54 @@ function SkeletonBoleta() {
 }
 
 // ── Modal de la boleta ─────────────────────────────────────────────────────
-function ModalBoleta({ periodo, onClose }) {
+// Pie de la boleta: conformidad del trabajador (solo si la visualización quedó registrada).
+function Conformidad({ periodo, conformidad, onConforme }) {
+  const [enviando, setEnviando] = useState(false);
+  const [error,    setError]    = useState('');
+
+  if (!conformidad) return null; // se abrió "sin registrar": no hay registro que marcar
+
+  if (conformidad.conforme) {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold"
+        style={{ background: '#f0fdf4', color: '#15803d' }}>
+        <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Diste tu conformidad con esta boleta{conformidad.fecha ? ` el ${formatDateFromISO(conformidad.fecha)}` : ''}.
+      </div>
+    );
+  }
+
+  const dar = async () => {
+    setEnviando(true);
+    setError('');
+    try {
+      const { data } = await confirmarBoleta(periodo);
+      onConforme(periodo, data.data?.fec_firma_conforme ?? new Date().toISOString());
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'No se pudo registrar la conformidad.');
+    } finally {
+      setEnviando(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3">
+      <p className="flex-1 text-sm text-gray-600">
+        Revisa tu boleta. Si los montos son correctos, confirma que estás conforme.
+        {error && <span className="block text-xs font-semibold text-red-600 mt-1">{error}</span>}
+      </p>
+      <button type="button" onClick={dar} disabled={enviando}
+        className="px-4 py-2.5 rounded-xl text-sm font-bold text-white transition active:scale-95 disabled:opacity-60"
+        style={{ background: ROJO }}>
+        {enviando ? 'Registrando…' : 'Estoy conforme'}
+      </button>
+    </div>
+  );
+}
+
+function ModalBoleta({ periodo, onClose, conformidad, onConforme }) {
   const [boleta,  setBoleta]  = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState('');
@@ -90,7 +137,10 @@ function ModalBoleta({ periodo, onClose }) {
             <div className="text-center py-10 text-red-500 font-medium">{error}</div>
           )}
           {!loading && !error && boleta && (
-            <BoletaContent boleta={boleta} />
+            <div className="space-y-4">
+              <BoletaContent boleta={boleta} />
+              <Conformidad periodo={periodo} conformidad={conformidad} onConforme={onConforme} />
+            </div>
           )}
         </div>
       </div>
@@ -344,6 +394,7 @@ function ModalPrimeraVez({ periodo, onConfirmar, onCancelar, onSaltarRegistro, c
 export default function MisRemuneraciones() {
   const [periodos,            setPeriodos]   = useState([]);
   const [periodosVistos,      setPVis]       = useState(new Set());
+  const [conformes,           setConformes]  = useState({}); // periodo → fecha de conformidad ('' si no se conoce)
   const [loading,             setLoading]    = useState(true);
   const [error,               setError]      = useState('');
   const [errorLog,            setErrorLog]   = useState(''); // error al registrar visualización
@@ -360,8 +411,9 @@ export default function MisRemuneraciones() {
     ])
       .then(([resPeriodos, resVistas]) => {
         setPeriodos(resPeriodos.data.data ?? []);
-        const vistos = new Set((resVistas.data.data ?? []).map((v) => v.periodo));
-        setPVis(vistos);
+        const filasVistas = resVistas.data.data ?? [];
+        setPVis(new Set(filasVistas.map((v) => v.periodo)));
+        setConformes(Object.fromEntries(filasVistas.filter((v) => v.ind_firma_conforme === 'S').map((v) => [v.periodo, ''])));
       })
       .catch(() => setError('No se pudieron cargar los períodos de boletas.'))
       .finally(() => setLoading(false));
@@ -489,6 +541,7 @@ export default function MisRemuneraciones() {
               const mes    = p.MES_PROCESO;
               const col    = colorDeAnio(anio, años);
               const vista  = periodosVistos.has(clave);
+              const conforme = clave in conformes;
               return (
                 <button
                   key={clave}
@@ -531,7 +584,7 @@ export default function MisRemuneraciones() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
                             d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
-                        <span className="text-[10px] font-semibold">Vista</span>
+                        <span className="text-[10px] font-semibold">{conforme ? 'Conforme' : 'Vista'}</span>
                       </>
                     ) : (
                       <>
@@ -567,6 +620,10 @@ export default function MisRemuneraciones() {
         <ModalBoleta
           periodo={periodoSeleccionado}
           onClose={() => setPeriodoSel(null)}
+          conformidad={periodosVistos.has(periodoSeleccionado)
+            ? { conforme: periodoSeleccionado in conformes, fecha: conformes[periodoSeleccionado] || null }
+            : null}
+          onConforme={(p, fecha) => setConformes((prev) => ({ ...prev, [p]: fecha }))}
         />
       )}
     </div>

@@ -26,3 +26,5 @@ export const getConfigVac        = ()                   => api.get('/erp/config-
 // Registro de visualización de boletas (1 registro por boleta/mes)
 export const getBoletasVistas    = ()                   => api.get('/erp/boletas-vistas');
 export const registrarVisBoleta  = (data)               => api.post('/erp/boletas-vistas', data);
+// Conformidad del trabajador con su boleta (periodo AAAAMM ya visto)
+export const confirmarBoleta    = (periodo)            => api.post('/erp/boletas-vistas/conformidad', { periodo });

@@ -9,6 +9,8 @@ import MisRemuneraciones from '../pages/remuneraciones/MisRemuneraciones';
 import MisVacaciones from '../pages/vacaciones/MisVacaciones';
 import MiEquipoEvaluaciones from '../pages/equipo/MiEquipoEvaluaciones';
 import AprobarVacaciones from '../pages/equipo/AprobarVacaciones';
+import AutorizarPermisos from '../pages/equipo/AutorizarPermisos';
+import MisPermisos from '../pages/permisos/MisPermisos';
 import AprobarEvaluaciones from '../pages/equipo/AprobarEvaluaciones';
 import AprobarEvaluacion from '../pages/equipo/AprobarEvaluacion';
 import EvaluarTrabajador from '../pages/equipo/EvaluarTrabajador';
@@ -45,7 +47,9 @@ export default function AppRouter() {
           <Route path="perfil" element={<MiPerfil />} />
           <Route path="remuneraciones" element={<MisRemuneraciones />} />
           <Route path="vacaciones" element={<MisVacaciones />} />
+          <Route path="permisos" element={<MisPermisos />} />
           <Route path="equipo/vacaciones" element={<AprobarVacaciones />} />
+          <Route path="equipo/permisos" element={<AutorizarPermisos />} />
           <Route path="equipo/aprobaciones" element={<AprobarEvaluaciones />} />
           <Route path="equipo/aprobaciones/:empresa/:codPersonal/:periodo" element={<AprobarEvaluacion />} />
           <Route path="equipo/evaluaciones" element={<MiEquipoEvaluaciones />} />

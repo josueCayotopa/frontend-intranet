@@ -47,8 +47,17 @@ const navItems = [
       </svg>
     ),
   },
+  {
+    to: '/permisos',
+    label: 'Permisos',
+    icon: (
+      <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    ),
+  },
 ];
-
 const adminItems = [
   {
     to: '/admin/usuarios',
@@ -99,6 +108,18 @@ const vacacionesItem = {
   ),
 };
 
+// Solo para jefes: autorizar los permisos de su personal ("Administrador de Sede" del formato).
+const permisosItem = {
+  to: '/equipo/permisos',
+  label: 'Autorizar permisos',
+  icon: (
+    <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+    </svg>
+  ),
+};
+
 // Solo para jefes: personal a cargo en la intranet (COD_PERSONAL_JEFE).
 const equipoItem = {
   to: '/equipo/evaluaciones',
@@ -117,6 +138,7 @@ function SidebarContent({ onClose }) {
   const [esJefe, setEsJefe] = useState(false);
 
   const [vacPendientes, setVacPendientes] = useState(0);
+  const [permPendientes, setPermPendientes] = useState(0);
   const [esAprobador, setEsAprobador] = useState(false);
   const [aprobPendientes, setAprobPendientes] = useState(0);
 
@@ -127,6 +149,7 @@ function SidebarContent({ onClose }) {
         if (!vigente) return;
         setEsJefe(Boolean(data.data?.es_jefe));
         setVacPendientes(Number(data.data?.vacaciones_pendientes ?? 0));
+        setPermPendientes(Number(data.data?.permisos_pendientes ?? 0));
         setEsAprobador(Boolean(data.data?.es_aprobador));
         setAprobPendientes(Number(data.data?.aprobaciones_pendientes ?? 0));
       })
@@ -139,10 +162,10 @@ function SidebarContent({ onClose }) {
 
   const items = [
     ...navItems,
-    ...(esJefe ? [vacacionesItem, equipoItem] : []),
+    ...(esJefe ? [vacacionesItem, permisosItem, equipoItem] : []),
     ...(esAprobador ? [aprobacionesItem] : []),
   ];
-  const contador = (item) => (item === vacacionesItem ? vacPendientes : item === aprobacionesItem ? aprobPendientes : 0);
+  const contador = (item) => (item === vacacionesItem ? vacPendientes : item === permisosItem ? permPendientes : item === aprobacionesItem ? aprobPendientes : 0);
 
   const handleLogout = () => {
     logout();
